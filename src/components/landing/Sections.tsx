@@ -107,10 +107,12 @@ export function Comparison() {
             <div className="p-4 text-primary">DajOpinie</div>
             <div className="p-4 text-muted-foreground">Droga konkurencja / Agencje</div>
           </div>
-          {comparison.map((row) => (
-            <div
+          {comparison.map((row, i) => (
+            <Reveal
               key={row.label}
-              className="grid grid-cols-3 border-t border-border text-sm"
+              from={i % 2 === 0 ? "left" : "right"}
+              delay={i * 80}
+              className="grid grid-cols-3 border-t border-border text-sm transition-colors hover:bg-secondary/40"
             >
               <div className="p-4 text-muted-foreground">{row.label}</div>
               <div className="flex items-start gap-2 p-4 font-medium">
@@ -121,8 +123,9 @@ export function Comparison() {
                 <X className="mt-0.5 size-4 shrink-0 text-destructive" />
                 {row.them}
               </div>
-            </div>
+            </Reveal>
           ))}
+
         </div>
       </div>
     </section>

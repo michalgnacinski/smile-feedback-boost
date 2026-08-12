@@ -207,8 +207,223 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rise-in {
-    animation: none;
+/* ---------- Expressive motion layer ---------- */
+
+/* Hero heading: fade + gentle scale-up */
+@utility hero-in {
+  animation: hero-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
+
+/* Spring drop-in (dashboard cards) */
+@utility spring-in {
+  animation: spring-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes spring-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Elastic pop (mobile scan card) */
+@utility pop-in {
+  animation: pop-in 0.75s cubic-bezier(0.34, 1.7, 0.5, 1) both;
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Star bounce-in */
+@utility star-pop {
+  animation: star-pop 0.5s cubic-bezier(0.34, 1.8, 0.5, 1) both;
+}
+
+@keyframes star-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) translateY(8px) rotate(-25deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.25) translateY(0) rotate(4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Scroll reveal — base hidden state, .is-visible triggers */
+@utility reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.34, 1.4, 0.64, 1);
+  will-change: opacity, transform;
+
+  &.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility reveal-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  &.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility reveal-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  &.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Shimmer sheen sweeping across gold CTAs */
+@utility sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+      110deg,
+      transparent 35%,
+      oklch(1 0 0 / 0.45) 50%,
+      transparent 65%
+    );
+    transform: translateX(-120%);
+    animation: sheen-pass 4s ease-in-out infinite;
+  }
+}
+
+@utility sheen-fast {
+  &::after {
+    animation-duration: 3s;
+  }
+}
+
+@keyframes sheen-pass {
+  0%,
+  55% {
+    transform: translateX(-120%);
+  }
+  85%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* Gentle attention pulse (scale) */
+@utility breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+/* Tactile press feedback */
+@utility press {
+  transition: transform 0.12s ease;
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+/* Slow float for the hero mockup */
+@utility float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in,
+  .hero-in,
+  .spring-in,
+  .pop-in,
+  .star-pop,
+  .float-slow,
+  .breathe,
+  .pulse-gold {
+    animation: none !important;
+  }
+
+  .sheen::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .reveal,
+  .reveal-left,
+  .reveal-right {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+

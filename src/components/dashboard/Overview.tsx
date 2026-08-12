@@ -53,9 +53,10 @@ export function Overview() {
         {stats.map((s, i) => (
           <Card
             key={s.label}
-            className="rise-in hover-lift border-border bg-card"
-            style={{ animationDelay: `${i * 90}ms` }}
+            className="spring-in hover-lift border-border bg-card"
+            style={{ animationDelay: `${120 + i * 90}ms` }}
           >
+
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
                 <span className="min-w-0 truncate">{s.label}</span>
@@ -81,9 +82,10 @@ export function Overview() {
         ))}
 
         <Card
-          className="rise-in hover-lift border-primary/40 bg-card"
-          style={{ animationDelay: "270ms" }}
+          className="spring-in hover-lift border-primary/40 bg-card"
+          style={{ animationDelay: "390ms" }}
         >
+
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Status subskrypcji
@@ -100,7 +102,7 @@ export function Overview() {
         </Card>
       </div>
 
-      <Card className="rise-in border-border bg-card" style={{ animationDelay: "340ms" }}>
+      <Card className="rise-in border-border bg-card" style={{ animationDelay: "480ms" }}>
         <CardHeader>
           <CardTitle className="text-base">Liczba skanów QR w ostatnich 14 dniach</CardTitle>
         </CardHeader>
@@ -138,8 +140,12 @@ export function Overview() {
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 5 }}
-                isAnimationActive={false}
+                isAnimationActive
+                animationBegin={450}
+                animationDuration={1400}
+                animationEasing="ease-out"
               />
+
             </LineChart>
           </ResponsiveContainer>
         </CardContent>

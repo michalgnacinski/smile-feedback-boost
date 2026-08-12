@@ -60,9 +60,10 @@ function Dashboard() {
     <div className="min-h-screen bg-background lg:flex">
       <aside
         className={cn(
-          "border-b border-sidebar-border bg-sidebar lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r",
+          "rise-in border-b border-sidebar-border bg-sidebar lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r",
         )}
       >
+
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
             <Logo />
@@ -118,7 +119,7 @@ function Dashboard() {
       </aside>
 
       <main className="flex-1 px-4 py-6 pb-24 md:px-8">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <header className="rise-in mb-6 flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: "60ms" }}>
           <div>
             <h1 className="text-2xl font-bold">{nav.find((n) => n.id === view)?.label}</h1>
             <p className="text-sm text-muted-foreground">

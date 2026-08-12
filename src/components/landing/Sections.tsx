@@ -1,5 +1,7 @@
 import { Logo } from "@/components/Logo";
+import { Reveal } from "@/hooks/use-in-view";
 import { BarChart3, Check, MousePointerClick, QrCode, X } from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,
@@ -70,18 +72,21 @@ export function Steps() {
           Trzy kroki i system pracuje za Ciebie
         </h2>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {steps.map((s) => (
-            <Card key={s.title} className="border-border bg-card">
-              <CardContent className="pt-6">
-                <div className="flex size-11 items-center justify-center rounded-lg bg-secondary">
-                  <s.icon className="size-5 text-primary" />
-                </div>
-                <h3 className="mt-5 text-lg font-semibold">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.text}</p>
-              </CardContent>
-            </Card>
+          {steps.map((s, i) => (
+            <Reveal key={s.title} from={i === 1 ? "up" : i === 0 ? "left" : "right"} delay={i * 110}>
+              <Card className="hover-lift h-full border-border bg-card">
+                <CardContent className="pt-6">
+                  <div className="flex size-11 items-center justify-center rounded-lg bg-secondary">
+                    <s.icon className="size-5 text-primary" />
+                  </div>
+                  <h3 className="mt-5 text-lg font-semibold">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.text}</p>
+                </CardContent>
+              </Card>
+            </Reveal>
           ))}
         </div>
+
       </div>
     </section>
   );
@@ -102,10 +107,12 @@ export function Comparison() {
             <div className="p-4 text-primary">DajOpinie</div>
             <div className="p-4 text-muted-foreground">Droga konkurencja / Agencje</div>
           </div>
-          {comparison.map((row) => (
-            <div
+          {comparison.map((row, i) => (
+            <Reveal
               key={row.label}
-              className="grid grid-cols-3 border-t border-border text-sm"
+              from={i % 2 === 0 ? "left" : "right"}
+              delay={i * 80}
+              className="grid grid-cols-3 border-t border-border text-sm transition-colors hover:bg-secondary/40"
             >
               <div className="p-4 text-muted-foreground">{row.label}</div>
               <div className="flex items-start gap-2 p-4 font-medium">
@@ -116,8 +123,9 @@ export function Comparison() {
                 <X className="mt-0.5 size-4 shrink-0 text-destructive" />
                 {row.them}
               </div>
-            </div>
+            </Reveal>
           ))}
+
         </div>
       </div>
     </section>
@@ -133,41 +141,44 @@ export function Pricing({ onTrial }: { onTrial: () => void }) {
           Bez ukrytych opłat, bez umów rocznych, bez opłaty wdrożeniowej.
         </p>
 
-        <Card className="mt-10 border-primary/40 bg-card text-left shadow-elevated">
-          <CardContent className="p-8">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-semibold">Plan Gastro Starter</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Wszystko czego potrzebuje jeden lokal
-                </p>
+        <Reveal delay={80}>
+          <Card className="mt-10 border-primary/40 bg-card text-left shadow-elevated">
+            <CardContent className="p-8">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold">Plan Gastro Starter</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Wszystko czego potrzebuje jeden lokal
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-4xl font-extrabold text-primary">99 PLN</p>
+                  <p className="text-xs text-muted-foreground">netto / miesiąc</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-4xl font-extrabold text-primary">99 PLN</p>
-                <p className="text-xs text-muted-foreground">netto / miesiąc</p>
-              </div>
-            </div>
 
-            <ul className="mt-8 space-y-3">
-              {planFeatures.map((f) => (
-                <li key={f} className="flex items-center gap-3 text-sm">
-                  <Check className="size-4 shrink-0 text-success" />
-                  {f}
-                </li>
-              ))}
-            </ul>
+              <ul className="mt-8 space-y-3">
+                {planFeatures.map((f) => (
+                  <li key={f} className="flex items-center gap-3 text-sm">
+                    <Check className="size-4 shrink-0 text-success" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
 
-            <Button
-              size="lg"
-              onClick={onTrial}
-              className="mt-8 h-12 w-full font-semibold glow-gold"
-            >
-              Aktywuj 14 dni za darmo (Bez karty)
-            </Button>
-          </CardContent>
-        </Card>
+              <Button
+                size="lg"
+                onClick={onTrial}
+                className="press sheen mt-8 h-12 w-full font-semibold glow-gold"
+              >
+                Aktywuj 14 dni za darmo (Bez karty)
+              </Button>
+            </CardContent>
+          </Card>
+        </Reveal>
       </div>
     </section>
+
   );
 }
 

@@ -140,8 +140,12 @@ export function Overview() {
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 5 }}
-                isAnimationActive={false}
+                isAnimationActive
+                animationBegin={450}
+                animationDuration={1400}
+                animationEasing="ease-out"
               />
+
             </LineChart>
           </ResponsiveContainer>
         </CardContent>

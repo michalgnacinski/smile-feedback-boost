@@ -168,8 +168,9 @@ export function QrTables({ restaurantName = "Pizzeria La Torre" }: { restaurantN
             <div
               key={t.id}
               className="rise-in hover-lift grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-xl border border-border bg-secondary/40 p-3 lg:grid-cols-[auto_minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto]"
-              style={{ animationDelay: `${180 + i * 70}ms` }}
+              style={{ animationDelay: `${220 + i * 50}ms` }}
             >
+
               <button
                 type="button"
                 onClick={() => setPreview(t)}

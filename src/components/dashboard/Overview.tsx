@@ -113,6 +113,7 @@ export function Overview() {
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 5 }}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>

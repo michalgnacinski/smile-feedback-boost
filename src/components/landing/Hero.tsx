@@ -57,7 +57,7 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
               className="h-full w-full object-cover"
             />
           </div>
-          <div className="absolute -bottom-5 -left-4 hidden rounded-xl border border-border bg-card px-4 py-3 shadow-elevated sm:block">
+          <div className="absolute -bottom-5 right-4 hidden rounded-xl border border-border bg-card px-4 py-3 shadow-elevated sm:block">
             <p className="text-2xl font-bold text-primary">+248</p>
             <p className="text-xs text-muted-foreground">skanów w tym miesiącu</p>
           </div>

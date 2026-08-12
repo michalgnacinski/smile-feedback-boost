@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, QrCode, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import qrStand from "@/assets/qr-stand.jpg";
+import qrReviewCard from "@/assets/qr-review-card.jpg";
 
 export function Hero({ onTrial }: { onTrial: () => void }) {
   return (
@@ -50,8 +50,8 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
         <div className="relative">
           <div className="overflow-hidden rounded-2xl border border-border shadow-elevated">
             <img
-              src={qrStand}
-              alt="Elegancki akrylowy stojak z kodem QR DajOpinie na stoliku w restauracji"
+              src={qrReviewCard}
+              alt="Przykładowa karta QR dla restauracji: Twoje Logo, Jak podobała Ci się wizyta?, Podziel się swoją opinią, oraz QR kod z napisem Powered by DajOpinie"
               width={1024}
               height={1024}
               className="h-full w-full object-cover"

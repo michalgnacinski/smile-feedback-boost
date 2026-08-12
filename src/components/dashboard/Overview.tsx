@@ -53,9 +53,10 @@ export function Overview() {
         {stats.map((s, i) => (
           <Card
             key={s.label}
-            className="rise-in hover-lift border-border bg-card"
-            style={{ animationDelay: `${i * 90}ms` }}
+            className="spring-in hover-lift border-border bg-card"
+            style={{ animationDelay: `${120 + i * 90}ms` }}
           >
+
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
                 <span className="min-w-0 truncate">{s.label}</span>

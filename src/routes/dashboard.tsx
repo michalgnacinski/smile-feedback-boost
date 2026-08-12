@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   ChevronDown,
   CreditCard,
   Link2,
+  Loader2,
   Menu,
   QrCode,
-  Star,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,7 @@ import { GoogleLinkCard } from "@/components/dashboard/GoogleLinkCard";
 import { Overview } from "@/components/dashboard/Overview";
 import { QrTables } from "@/components/dashboard/QrTables";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
-import { restaurants } from "@/lib/mock-data";
+import { getRestaurantDashboardData } from "@/lib/services/dashboard";
 import { cn } from "@/lib/utils";
 
 const title = "Panel restauratora — DajOpinie";
@@ -53,17 +53,36 @@ const nav: { id: View; label: string; icon: typeof BarChart3 }[] = [
 
 function Dashboard() {
   const [view, setView] = useState<View>("overview");
-  const [restaurant, setRestaurant] = useState(restaurants[0]!);
   const [navOpen, setNavOpen] = useState(false);
+
+  // Stan dla żywych danych z NeonDB
+  const [activeSlug, setActiveSlug] = useState<string>("pizzeria-la-torre");
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pobieranie danych z bazy przy załadowaniu oraz po zmianie lokalu
+  useEffect(() => {
+    getRestaurantDashboardData({ data: activeSlug })
+      .then((res) => {
+        setDashboardData(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError("Błąd pobierania danych");
+        setLoading(false);
+      });
+  }, [activeSlug]);
 
   return (
     <div className="min-h-screen bg-background lg:flex">
+      {/* SIDEBAR */}
       <aside
         className={cn(
-          "rise-in border-b border-sidebar-border bg-sidebar lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r",
+          "rise-in border-b border-sidebar-border bg-sidebar lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r"
         )}
       >
-
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
             <Logo />
@@ -77,25 +96,27 @@ function Dashboard() {
           </button>
         </div>
 
+        {/* PRZEŁĄCZNIK LOKALI */}
         <div className="px-4 pb-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full justify-between">
-                <span className="truncate">{restaurant.name}</span>
+                <span className="truncate">
+                  {dashboardData?.restaurantName || "Pobieranie lokalu..."}
+                </span>
                 <ChevronDown className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
-              {restaurants.map((r) => (
-                <DropdownMenuItem key={r.id} onSelect={() => setRestaurant(r)}>
-                  {r.name}
-                  <span className="ml-auto text-xs text-muted-foreground">{r.city}</span>
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem onSelect={() => setActiveSlug("pizzeria-la-torre")}>
+                Pizzeria La Torre
+                <span className="ml-auto text-xs text-muted-foreground">Kraków</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
+        {/* NAWIGACJA BOOCZNA */}
         <nav className={cn("px-3 pb-4", navOpen ? "block" : "hidden lg:block")}>
           {nav.map((item) => (
             <button
@@ -107,8 +128,8 @@ function Dashboard() {
               className={cn(
                 "mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 view === item.id
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
               )}
             >
               <item.icon className="size-4" />
@@ -118,12 +139,18 @@ function Dashboard() {
         </nav>
       </aside>
 
+      {/* MAIN CONTENT AREA */}
       <main className="flex-1 px-4 py-6 pb-24 md:px-8">
-        <header className="rise-in mb-6 flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: "60ms" }}>
+        <header
+          className="rise-in mb-6 flex flex-wrap items-center justify-between gap-3"
+          style={{ animationDelay: "60ms" }}
+        >
           <div>
-            <h1 className="text-2xl font-bold">{nav.find((n) => n.id === view)?.label}</h1>
+            <h1 className="text-2xl font-bold">
+              {nav.find((n) => n.id === view)?.label}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              {restaurant.name} · {restaurant.city}
+              {dashboardData?.restaurantName || "Ładowanie..."} · Kraków
             </p>
           </div>
           <Badge variant="outline" className="border-primary/50 text-primary">
@@ -131,41 +158,76 @@ function Dashboard() {
           </Badge>
         </header>
 
-        {view === "overview" && (
-          <div className="space-y-6">
-            <Overview />
-            <GoogleLinkCard />
-            <QrTables restaurantName={restaurant.name} />
+        {/* EKRAN ŁADOWANIA / BŁĘDU */}
+        {loading ? (
+          <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card">
+            <Loader2 className="size-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Pobieranie statystyk z NeonDB...</p>
           </div>
-        )}
-
-        {view === "qr" && <QrTables restaurantName={restaurant.name} />}
-        {view === "google" && <GoogleLinkCard />}
-
-
-        {view === "billing" && (
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="text-base">Płatności</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Plan</span>
-                <span className="font-medium">Gastro Starter — 99 PLN netto / msc</span>
+        ) : error ? (
+          <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-center text-destructive">
+            {error}
+          </div>
+        ) : (
+          <>
+            {/* WIDOK: PRZEGLĄD */}
+            {view === "overview" && (
+              <div className="space-y-6">
+                <Overview
+                  stats={dashboardData?.stats}
+                  chartData={dashboardData?.chartData}
+                />
+                <GoogleLinkCard
+                  initialLink={dashboardData?.googleReviewLink}
+                />
+                <QrTables
+                  restaurantName={dashboardData?.restaurantName}
+                  tables={dashboardData?.tables}
+                />
               </div>
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <span className="text-muted-foreground">Status</span>
-                <Badge className="bg-primary text-primary-foreground hover:bg-primary">
-                  Okres próbny (zostało 9 dni)
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Pierwsze obciążenie</span>
-                <span className="font-medium">21.08.2026</span>
-              </div>
-              <Button className="mt-2 font-semibold">Dodaj metodę płatności</Button>
-            </CardContent>
-          </Card>
+            )}
+
+            {/* WIDOK: KODY QR */}
+            {view === "qr" && (
+              <QrTables
+                restaurantName={dashboardData?.restaurantName}
+                tables={dashboardData?.tables}
+              />
+            )}
+
+            {/* WIDOK: GOOGLE LINK */}
+            {view === "google" && (
+              <GoogleLinkCard
+                initialLink={dashboardData?.googleReviewLink}
+              />
+            )}
+
+            {/* WIDOK: PŁATNOŚCI */}
+            {view === "billing" && (
+              <Card className="border-border bg-card">
+                <CardHeader>
+                  <CardTitle className="text-base">Płatności</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <span className="text-muted-foreground">Plan</span>
+                    <span className="font-medium">Gastro Starter — 99 PLN netto / msc</span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge className="bg-primary text-primary-foreground hover:bg-primary">
+                      Okres próbny (zostało 9 dni)
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Pierwsze obciążenie</span>
+                    <span className="font-medium">21.08.2026</span>
+                  </div>
+                  <Button className="mt-2 font-semibold">Dodaj metodę płatności</Button>
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </main>
 

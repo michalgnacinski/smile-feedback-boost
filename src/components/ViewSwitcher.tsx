@@ -14,7 +14,7 @@ const linkClass = (active: boolean) =>
     "rounded-full px-3 py-1.5 font-medium transition-all duration-200",
     active
       ? "bg-primary text-primary-foreground shadow-gold"
-      : "text-muted-foreground hover:text-foreground hover:bg-secondary/70",
+      : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
   );
 
 export function ViewSwitcher() {
@@ -31,7 +31,7 @@ export function ViewSwitcher() {
             </Link>
             <Link
               to="/r/$slug"
-              params={{ slug: "pizzeria-la-torre-01" }}
+              params={{ slug: "pizzeria-la-torre-stolik01" }}
               className={linkClass(pathname.startsWith("/r/"))}
             >
               Skan QR

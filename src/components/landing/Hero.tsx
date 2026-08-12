@@ -18,10 +18,10 @@ function HeroMockup({ float = false }: { float?: boolean }) {
   };
 
   return (
-    <div className={float ? "float-slow" : undefined} style={{ perspective: "1200px" }}>
+    <div className={float ? "float-slow animate-in fade-in zoom-in-95 duration-1000" : undefined} style={{ perspective: "1200px" }}>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-6 rounded-full opacity-40 blur-3xl"
+        className="pointer-events-none absolute inset-6 rounded-full opacity-40 blur-3xl animate-pulse"
         style={{
           background:
             "radial-gradient(closest-side, color-mix(in oklab, var(--primary) 55%, transparent), transparent)",
@@ -31,7 +31,7 @@ function HeroMockup({ float = false }: { float?: boolean }) {
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={() => setTilt({ x: 0, y: 0 })}
-        className="relative overflow-hidden rounded-2xl border border-primary/25 shadow-elevated transition-transform duration-300 ease-out will-change-transform"
+        className="relative overflow-hidden rounded-2xl border border-primary/25 shadow-elevated transition-transform duration-300 ease-out will-change-transform group"
         style={{
           transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${tilt.x || tilt.y ? 1.02 : 1})`,
           boxShadow:
@@ -40,10 +40,10 @@ function HeroMockup({ float = false }: { float?: boolean }) {
       >
         <img
           src={qrReviewCard}
-          alt="Przykładowa karta QR dla restauracji w stojaku na stoliku: Twoje Logo, Jak podobała Ci się wizyta?, Podziel się swoją opinią, oraz QR kod z napisem Powered by DajOpinie"
+          alt="Przykładowa karta QR dla restauracji"
           width={1024}
           height={1024}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-scale duration-700 group-hover:scale-105"
         />
         <div
           aria-hidden
@@ -54,7 +54,7 @@ function HeroMockup({ float = false }: { float?: boolean }) {
           }}
         />
       </div>
-      <div className="absolute -bottom-5 right-4 hidden rounded-xl border border-border bg-card/90 px-4 py-3 shadow-elevated backdrop-blur-xl sm:block">
+      <div className="absolute -bottom-5 right-4 hidden rounded-xl border border-border bg-card/90 px-4 py-3 shadow-elevated backdrop-blur-xl sm:block animate-in fade-in slide-in-from-bottom-6 duration-700 delay-500">
         <p className="text-2xl font-bold text-primary">+248</p>
         <p className="text-xs text-muted-foreground">skanów w tym miesiącu</p>
       </div>
@@ -80,21 +80,21 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
                 "radial-gradient(60% 55% at 25% 35%, color-mix(in oklab, var(--background) 92%, black), transparent 75%)",
             }}
           />
-          <span className="hero-in inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
+          <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground animate-in fade-in slide-in-from-bottom-3 duration-500">
             Dla restauracji, kawiarni i lokalnej gastronomii 🍕
           </span>
 
           <h1
-            className="hero-in mt-6 text-4xl font-extrabold leading-[1.08] md:text-5xl lg:text-6xl"
-            style={{ animationDelay: "90ms" }}
+            className="mt-6 text-4xl font-extrabold leading-[1.08] md:text-5xl lg:text-6xl animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards"
+            style={{ animationDelay: "100ms" }}
           >
             Więcej 5-gwiazdkowych opinii w Google.{" "}
             <span className="text-primary">Zero pracy dla Twojego zespołu.</span>
           </h1>
 
           <p
-            className="rise-in mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg"
-            style={{ animationDelay: "260ms" }}
+            className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg animate-in fade-in slide-in-from-bottom-5 duration-700 fill-mode-backwards"
+            style={{ animationDelay: "200ms" }}
           >
             Nasz pasywny system ze stojakiem QR na stoliku przekierowuje gości czekających na
             rachunek bezpośrednio do pisania opinii w Google. Bez kuponów, bez ryzyka bana, w 100%
@@ -106,41 +106,41 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
           </div>
 
           <div
-            className="rise-in mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
-            style={{ animationDelay: "380ms" }}
+            className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center animate-in fade-in slide-in-from-bottom-6 duration-700 fill-mode-backwards"
+            style={{ animationDelay: "300ms" }}
           >
             <Button
               size="lg"
               onClick={onTrial}
-              className="press sheen h-14 shrink-0 whitespace-nowrap px-6 text-base font-semibold glow-gold"
+              className="press sheen h-14 shrink-0 whitespace-nowrap px-6 text-base font-semibold glow-gold transition-transform hover:scale-[1.02] active:scale-[0.98]"
             >
               Rozpocznij 14-dniowy darmowy test
               <ArrowRight className="size-5" />
             </Button>
             <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="press sheen h-14 shrink-0 whitespace-nowrap border-2 border-primary px-6 text-base font-semibold text-primary hover:bg-primary hover:text-primary-foreground pulse-gold"
-            >
-              <Link to="/r/$slug" params={{ slug: "pizzeria-la-torre-01" }}>
-                <QrCode className="size-5" />
-                Zobacz jak to działa (Demo QR)
-              </Link>
-            </Button>
+            asChild
+            size="lg"
+            variant="outline"
+            className="press sheen h-14 shrink-0 whitespace-nowrap border-2 border-primary px-6 text-base font-semibold text-primary hover:bg-primary hover:text-primary-foreground pulse-gold transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Link to="/r/$slug" params={{ slug: "pizzeria-la-torre-stolik01" }}>
+              <QrCode className="size-5" />
+              Zobacz jak to działa (Demo QR)
+            </Link>
+          </Button>
           </div>
 
           <p
-            className="rise-in mt-5 flex items-center gap-2 text-xs text-muted-foreground"
-            style={{ animationDelay: "460ms" }}
+            className="mt-5 flex items-center gap-2 text-xs text-muted-foreground animate-in fade-in duration-700 fill-mode-backwards"
+            style={{ animationDelay: "400ms" }}
           >
             <ShieldCheck className="size-4 text-success" />
             Bez karty kredytowej · Anulujesz jednym kliknięciem
           </p>
 
           <p
-            className="rise-in mt-3 flex items-start gap-2 rounded-xl border border-border bg-secondary/60 p-3 text-sm text-muted-foreground"
-            style={{ animationDelay: "540ms" }}
+            className="mt-3 flex items-start gap-2 rounded-xl border border-border bg-secondary/60 p-3 text-sm text-muted-foreground animate-in fade-in slide-in-from-bottom-2 duration-700 fill-mode-backwards"
+            style={{ animationDelay: "500ms" }}
           >
             <Handshake className="mt-0.5 size-4 shrink-0 text-primary" />
             <span>
@@ -149,7 +149,6 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
               kody QR i stojaki na stolikach.
             </span>
           </p>
-
         </div>
 
         <div className="relative hidden lg:block">
@@ -159,4 +158,3 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
     </section>
   );
 }
-

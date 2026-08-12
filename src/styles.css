@@ -1,13 +1,13 @@
-@import "tailwindcss" source(none);
-@source "../src";
+@import "tailwindcss";
 @import "tw-animate-css";
+
+@source "./**/*.{js,ts,jsx,tsx}";
 
 @custom-variant dark (&:is(.dark *));
 
 /*
  * DajOpinie design system — Minimalist Premium / Clean Tech.
  * Dark slate navy surfaces, warm gold CTA, muted slate text.
- * All colors are oklch semantic tokens. Never hardcode colors in components.
  */
 
 @theme inline {
@@ -63,24 +63,18 @@
 
 :root {
   --radius: 0.5rem;
-  /* light chip behind the DajOpinie wordmark */
   --brand-surface: oklch(0.978 0.004 91);
-  /* #0F172A */
   --background: oklch(0.208 0.042 265.755);
   --foreground: oklch(1 0 0);
-  /* slightly lifted panel */
   --card: oklch(0.245 0.041 264.5);
   --card-foreground: oklch(1 0 0);
   --popover: oklch(0.245 0.041 264.5);
   --popover-foreground: oklch(1 0 0);
-  /* #F59E0B */
   --primary: oklch(0.769 0.188 70.08);
   --primary-foreground: oklch(0.208 0.042 265.755);
-  /* #1E293B */
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(1 0 0);
   --muted: oklch(0.279 0.041 260.031);
-  /* #94A3B8 */
   --muted-foreground: oklch(0.704 0.04 256.788);
   --accent: oklch(0.279 0.041 260.031);
   --accent-foreground: oklch(0.769 0.188 70.08);
@@ -88,7 +82,6 @@
   --destructive-foreground: oklch(1 0 0);
   --success: oklch(0.72 0.16 158);
   --success-foreground: oklch(0.208 0.042 265.755);
-  /* #064E3B */
   --emerald-deep: oklch(0.336 0.078 165.5);
   --border: oklch(0.279 0.041 260.031);
   --input: oklch(0.279 0.041 260.031);
@@ -207,9 +200,7 @@
   }
 }
 
-/* ---------- Expressive motion layer ---------- */
-
-/* Hero heading: fade + gentle scale-up */
+/* Motion Utilities */
 @utility hero-in {
   animation: hero-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -225,7 +216,6 @@
   }
 }
 
-/* Spring drop-in (dashboard cards) */
 @utility spring-in {
   animation: spring-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -241,7 +231,6 @@
   }
 }
 
-/* Elastic pop (mobile scan card) */
 @utility pop-in {
   animation: pop-in 0.75s cubic-bezier(0.34, 1.7, 0.5, 1) both;
 }
@@ -261,7 +250,6 @@
   }
 }
 
-/* Star bounce-in */
 @utility star-pop {
   animation: star-pop 0.5s cubic-bezier(0.34, 1.8, 0.5, 1) both;
 }
@@ -281,7 +269,6 @@
   }
 }
 
-/* Scroll reveal — base hidden state, .is-visible triggers */
 @utility reveal {
   opacity: 0;
   transform: translateY(28px);
@@ -322,7 +309,6 @@
   }
 }
 
-/* Shimmer sheen sweeping across gold CTAs */
 @utility sheen {
   position: relative;
   overflow: hidden;
@@ -362,7 +348,6 @@
   }
 }
 
-/* Gentle attention pulse (scale) */
 @utility breathe {
   animation: breathe 3s ease-in-out infinite;
 }
@@ -377,7 +362,6 @@
   }
 }
 
-/* Tactile press feedback */
 @utility press {
   transition: transform 0.12s ease;
 
@@ -386,7 +370,6 @@
   }
 }
 
-/* Slow float for the hero mockup */
 @utility float-slow {
   animation: float-slow 7s ease-in-out infinite;
 }
@@ -426,4 +409,3 @@
     transition: none;
   }
 }
-

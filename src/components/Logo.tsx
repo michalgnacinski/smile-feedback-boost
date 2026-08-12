@@ -1,4 +1,5 @@
-import logoAsset from "@/assets/dajopinie-logo.png.asset.json";
+import { Link } from "@tanstack/react-router";
+import logoImg from "../assets/dajopinie-logo.png";
 import { cn } from "@/lib/utils";
 
 export function Logo({
@@ -9,19 +10,18 @@ export function Logo({
   imgClassName?: string;
 }) {
   return (
-    <span
+    <Link
+      to="/"
       className={cn(
-        "inline-flex items-center rounded-lg bg-brand-surface px-2.5 py-1.5",
-        className,
+        "inline-flex items-center justify-center rounded-xl bg-white px-3.5 py-1.5 shadow-sm transition-transform hover:scale-105",
+        className
       )}
     >
       <img
-        src={logoAsset.url}
+        src={logoImg}
         alt="DajOpinie — logo"
-        width={820}
-        height={188}
-        className={cn("h-5 w-auto", imgClassName)}
+        className={cn("h-7 w-auto object-contain", imgClassName)}
       />
-    </span>
+    </Link>
   );
 }

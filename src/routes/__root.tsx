@@ -4,12 +4,10 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect } from "react";
 
-import appCss from "../styles.css?url";
+import "../styles.css";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -74,86 +72,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DajOpinie — opinie Google dla gastronomii" },
-      {
-        name: "description",
-        content:
-          "DajOpinie to system stojaków QR dla restauracji i kawiarni, który pasywnie zwiększa liczbę opinii w Google Maps.",
-      },
-      { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "DajOpinie" },
-      { property: "og:image", content: "https://smile-feedback-boost.lovable.app/og-cover.jpg" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: "https://smile-feedback-boost.lovable.app/og-cover.jpg" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap",
-      },
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
-    ],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@graph": [
-            {
-              "@type": "Organization",
-              name: "DajOpinie",
-              url: "https://smile-feedback-boost.lovable.app",
-              logo: "https://smile-feedback-boost.lovable.app/logo-mark.png",
-            },
-            {
-              "@type": "WebSite",
-              name: "DajOpinie",
-              url: "https://smile-feedback-boost.lovable.app",
-              inLanguage: "pl-PL",
-            },
-          ],
-        }),
-      },
-    ],
-  }),
-
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
-function RootShell({ children }: { children: ReactNode }) {
-  return (
-    <html lang="pl">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster position="top-center" />
     </QueryClientProvider>

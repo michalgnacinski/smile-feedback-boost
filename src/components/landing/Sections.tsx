@@ -68,15 +68,22 @@ export function Steps() {
   return (
     <section id="jak-to-dziala" className="border-t border-border py-16 md:py-24">
       <div className="mx-auto max-w-6xl px-4">
-        <h2 className="max-w-2xl text-3xl font-bold md:text-4xl">
-          Trzy kroki i system pracuje za Ciebie
-        </h2>
+        <Reveal from="up">
+          <h2 className="max-w-2xl text-3xl font-bold md:text-4xl">
+            Trzy kroki i system pracuje za Ciebie
+          </h2>
+        </Reveal>
+        
         <div className="mt-10 grid gap-5 md:grid-cols-3">
           {steps.map((s, i) => (
-            <Reveal key={s.title} from={i === 1 ? "up" : i === 0 ? "left" : "right"} delay={i * 110}>
-              <Card className="hover-lift h-full border-border bg-card">
+            <Reveal 
+              key={s.title} 
+              from={i === 0 ? "left" : i === 1 ? "up" : "right"} 
+              delay={i * 150}
+            >
+              <Card className="hover-lift h-full border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-lg">
                 <CardContent className="pt-6">
-                  <div className="flex size-11 items-center justify-center rounded-lg bg-secondary">
+                  <div className="flex size-11 items-center justify-center rounded-lg bg-secondary transition-transform duration-300 group-hover:scale-110">
                     <s.icon className="size-5 text-primary" />
                   </div>
                   <h3 className="mt-5 text-lg font-semibold">{s.title}</h3>
@@ -86,7 +93,6 @@ export function Steps() {
             </Reveal>
           ))}
         </div>
-
       </div>
     </section>
   );
@@ -96,37 +102,40 @@ export function Comparison() {
   return (
     <section className="border-t border-border py-16 md:py-24">
       <div className="mx-auto max-w-5xl px-4">
-        <h2 className="text-3xl font-bold md:text-4xl">Dlaczego DajOpinie?</h2>
-        <p className="mt-3 max-w-2xl text-muted-foreground">
-          Porównanie z typową agencją marketingową obsługującą lokalną gastronomię.
-        </p>
+        <Reveal from="up">
+          <h2 className="text-3xl font-bold md:text-4xl">Dlaczego DajOpinie?</h2>
+          <p className="mt-3 max-w-2xl text-muted-foreground">
+            Porównanie z typową agencją marketingową obsługującą lokalną gastronomię.
+          </p>
+        </Reveal>
 
-        <div className="mt-10 overflow-hidden rounded-xl border border-border">
-          <div className="grid grid-cols-3 bg-secondary text-sm font-semibold">
-            <div className="p-4 text-muted-foreground">Kryterium</div>
-            <div className="p-4 text-primary">DajOpinie</div>
-            <div className="p-4 text-muted-foreground">Droga konkurencja / Agencje</div>
+        <Reveal from="up" delay={150}>
+          <div className="mt-10 overflow-hidden rounded-xl border border-border shadow-sm">
+            <div className="grid grid-cols-3 bg-secondary text-sm font-semibold">
+              <div className="p-4 text-muted-foreground">Kryterium</div>
+              <div className="p-4 text-primary">DajOpinie</div>
+              <div className="p-4 text-muted-foreground">Droga konkurencja / Agencje</div>
+            </div>
+            {comparison.map((row, i) => (
+              <Reveal
+                key={row.label}
+                from={i % 2 === 0 ? "left" : "right"}
+                delay={i * 70}
+                className="grid grid-cols-3 border-t border-border text-sm transition-colors hover:bg-secondary/40"
+              >
+                <div className="p-4 text-muted-foreground">{row.label}</div>
+                <div className="flex items-start gap-2 p-4 font-medium">
+                  <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                  {row.us}
+                </div>
+                <div className="flex items-start gap-2 p-4 text-muted-foreground">
+                  <X className="mt-0.5 size-4 shrink-0 text-destructive" />
+                  {row.them}
+                </div>
+              </Reveal>
+            ))}
           </div>
-          {comparison.map((row, i) => (
-            <Reveal
-              key={row.label}
-              from={i % 2 === 0 ? "left" : "right"}
-              delay={i * 80}
-              className="grid grid-cols-3 border-t border-border text-sm transition-colors hover:bg-secondary/40"
-            >
-              <div className="p-4 text-muted-foreground">{row.label}</div>
-              <div className="flex items-start gap-2 p-4 font-medium">
-                <Check className="mt-0.5 size-4 shrink-0 text-success" />
-                {row.us}
-              </div>
-              <div className="flex items-start gap-2 p-4 text-muted-foreground">
-                <X className="mt-0.5 size-4 shrink-0 text-destructive" />
-                {row.them}
-              </div>
-            </Reveal>
-          ))}
-
-        </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -136,13 +145,15 @@ export function Pricing({ onTrial }: { onTrial: () => void }) {
   return (
     <section id="cennik" className="border-t border-border py-16 md:py-24">
       <div className="mx-auto max-w-3xl px-4 text-center">
-        <h2 className="text-3xl font-bold md:text-4xl">Jeden prosty plan</h2>
-        <p className="mt-3 text-muted-foreground">
-          Bez ukrytych opłat, bez umów rocznych, bez opłaty wdrożeniowej.
-        </p>
+        <Reveal from="up">
+          <h2 className="text-3xl font-bold md:text-4xl">Jeden prosty plan</h2>
+          <p className="mt-3 text-muted-foreground">
+            Bez ukrytych opłat, bez umów rocznych, bez opłaty wdrożeniowej.
+          </p>
+        </Reveal>
 
-        <Reveal delay={80}>
-          <Card className="mt-10 border-primary/40 bg-card text-left shadow-elevated">
+        <Reveal from="up" delay={200}>
+          <Card className="mt-10 border-primary/40 bg-card text-left shadow-elevated transition-all duration-300 hover:border-primary/80">
             <CardContent className="p-8">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
@@ -158,8 +169,8 @@ export function Pricing({ onTrial }: { onTrial: () => void }) {
               </div>
 
               <ul className="mt-8 space-y-3">
-                {planFeatures.map((f) => (
-                  <li key={f} className="flex items-center gap-3 text-sm">
+                {planFeatures.map((f, i) => (
+                  <li key={f} className="flex items-center gap-3 text-sm animate-in fade-in duration-300">
                     <Check className="size-4 shrink-0 text-success" />
                     {f}
                   </li>
@@ -169,7 +180,7 @@ export function Pricing({ onTrial }: { onTrial: () => void }) {
               <Button
                 size="lg"
                 onClick={onTrial}
-                className="press sheen mt-8 h-12 w-full font-semibold glow-gold"
+                className="press sheen mt-8 h-12 w-full font-semibold glow-gold transition-transform hover:scale-[1.01] active:scale-[0.99]"
               >
                 Aktywuj 14 dni za darmo (Bez karty)
               </Button>
@@ -178,7 +189,6 @@ export function Pricing({ onTrial }: { onTrial: () => void }) {
         </Reveal>
       </div>
     </section>
-
   );
 }
 
@@ -186,17 +196,22 @@ export function Faq() {
   return (
     <section id="faq" className="border-t border-border py-16 md:py-24">
       <div className="mx-auto max-w-3xl px-4">
-        <h2 className="text-3xl font-bold md:text-4xl">Najczęstsze pytania</h2>
-        <Accordion type="single" collapsible className="mt-8">
-          {faq.map((item) => (
-            <AccordionItem key={item.q} value={item.q}>
-              <AccordionTrigger className="text-left text-base">{item.q}</AccordionTrigger>
-              <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                {item.a}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <Reveal from="up">
+          <h2 className="text-3xl font-bold md:text-4xl">Najczęstsze pytania</h2>
+        </Reveal>
+
+        <Reveal from="up" delay={150}>
+          <Accordion type="single" collapsible className="mt-8">
+            {faq.map((item) => (
+              <AccordionItem key={item.q} value={item.q} className="transition-colors hover:bg-secondary/20 px-2 rounded-lg">
+                <AccordionTrigger className="text-left text-base font-medium">{item.q}</AccordionTrigger>
+                <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </Reveal>
       </div>
     </section>
   );
@@ -211,10 +226,10 @@ export function Footer() {
           <p>© {new Date().getFullYear()} DajOpinie.pl — Wszelkie prawa zastrzeżone.</p>
         </div>
         <div className="flex flex-wrap gap-5">
-          <a href="#" className="hover:text-foreground">
+          <a href="#" className="hover:text-foreground transition-colors">
             Polityka prywatności
           </a>
-          <a href="#" className="hover:text-foreground">
+          <a href="#" className="hover:text-foreground transition-colors">
             Regulamin
           </a>
         </div>

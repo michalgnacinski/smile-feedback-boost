@@ -23,16 +23,16 @@ export function TrialDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md animate-in fade-in zoom-in-95 duration-200">
         <DialogHeader>
-          <DialogTitle>Rozpocznij 14 dni za darmo</DialogTitle>
+          <DialogTitle className="text-xl">Rozpocznij 14 dni za darmo</DialogTitle>
           <DialogDescription>
             Bez karty kredytowej. Konto lokalu tworzysz w minutę.
           </DialogDescription>
         </DialogHeader>
 
         <form
-          className="space-y-4"
+          className="space-y-4 mt-2"
           onSubmit={(e) => {
             e.preventDefault();
             onOpenChange(false);
@@ -51,6 +51,7 @@ export function TrialDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Pizzeria La Torre"
+              className="transition-all focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div className="space-y-2">
@@ -62,9 +63,10 @@ export function TrialDialog({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="kontakt@twojlokal.pl"
+              className="transition-all focus:ring-2 focus:ring-primary/50"
             />
           </div>
-          <Button type="submit" className="w-full font-semibold">
+          <Button type="submit" className="w-full font-semibold h-11 glow-gold transition-transform active:scale-[0.98]">
             Aktywuj darmowy okres próbny
           </Button>
         </form>

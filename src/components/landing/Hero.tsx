@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, QrCode, ShieldCheck } from "lucide-react";
+import { ArrowRight, Handshake, QrCode, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import qrReviewCard from "@/assets/qr-review-card.jpg";
 
@@ -28,14 +28,19 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
             zgodnie z zasadami Google.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button size="lg" onClick={onTrial} className="h-12 font-semibold glow-gold">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button size="lg" onClick={onTrial} className="h-14 px-7 text-base font-semibold glow-gold">
               Rozpocznij 14-dniowy darmowy test
-              <ArrowRight className="size-4" />
+              <ArrowRight className="size-5" />
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12">
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="h-14 border-2 border-primary px-7 text-base font-semibold text-primary hover:bg-primary hover:text-primary-foreground pulse-gold"
+            >
               <Link to="/r/$slug" params={{ slug: "pizzeria-la-torre-01" }}>
-                <QrCode className="size-4" />
+                <QrCode className="size-5" />
                 Zobacz jak to działa (Demo QR)
               </Link>
             </Button>
@@ -45,6 +50,16 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
             <ShieldCheck className="size-4 text-success" />
             Bez karty kredytowej · Anulujesz jednym kliknięciem
           </p>
+
+          <p className="mt-3 flex items-start gap-2 rounded-xl border border-border bg-secondary/60 p-3 text-sm text-muted-foreground">
+            <Handshake className="mt-0.5 size-4 shrink-0 text-primary" />
+            <span>
+              Po kontakcie <span className="font-semibold text-foreground">przyjeżdżamy do Twojej
+              restauracji</span> i osobiście pomagamy uruchomić DajOpinie — ustawiamy link Google,
+              kody QR i stojaki na stolikach.
+            </span>
+          </p>
+
         </div>
 
         <div className="relative">

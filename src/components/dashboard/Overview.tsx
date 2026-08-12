@@ -10,26 +10,36 @@ import {
 import { ArrowUpRight, MousePointerClick, ScanLine, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CountUpText } from "@/hooks/use-count-up";
 import { scanSeries } from "@/lib/mock-data";
 
 const stats = [
   {
     label: "Wszystkie skany QR",
-    value: "248",
+    value: 248,
+    decimals: 0,
+    suffix: "",
+    prefix: "",
     icon: ScanLine,
     note: "+18% vs poprzedni tydzień",
     positive: true,
   },
   {
     label: "Przejścia do Google",
-    value: "164",
+    value: 164,
+    decimals: 0,
+    suffix: "",
+    prefix: "",
     icon: MousePointerClick,
     note: "Konwersja 66,1%",
     positive: true,
   },
   {
     label: "Szacowane nowe opinie",
-    value: "~25-30",
+    value: 28,
+    decimals: 0,
+    suffix: "",
+    prefix: "~",
     icon: Sparkles,
     note: "w tym miesiącu",
     positive: false,
@@ -40,16 +50,28 @@ export function Overview() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="border-border bg-card">
+        {stats.map((s, i) => (
+          <Card
+            key={s.label}
+            className="rise-in hover-lift border-border bg-card"
+            style={{ animationDelay: `${i * 90}ms` }}
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-sm font-medium text-muted-foreground">
-                {s.label}
-                <s.icon className="size-4 text-primary" />
+              <CardTitle className="flex items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
+                <span className="min-w-0 truncate">{s.label}</span>
+                <s.icon className="size-4 shrink-0 text-primary" />
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{s.value}</p>
+              <p className="text-3xl font-bold tabular-nums">
+                <CountUpText
+                  value={s.value}
+                  decimals={s.decimals}
+                  prefix={s.prefix}
+                  suffix={s.suffix}
+                  delay={i * 90}
+                />
+              </p>
               <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                 {s.positive && <ArrowUpRight className="size-3 text-success" />}
                 {s.note}
@@ -58,7 +80,10 @@ export function Overview() {
           </Card>
         ))}
 
-        <Card className="border-primary/40 bg-card">
+        <Card
+          className="rise-in hover-lift border-primary/40 bg-card"
+          style={{ animationDelay: "270ms" }}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Status subskrypcji
@@ -75,7 +100,7 @@ export function Overview() {
         </Card>
       </div>
 
-      <Card className="border-border bg-card">
+      <Card className="rise-in border-border bg-card" style={{ animationDelay: "340ms" }}>
         <CardHeader>
           <CardTitle className="text-base">Liczba skanów QR w ostatnich 14 dniach</CardTitle>
         </CardHeader>

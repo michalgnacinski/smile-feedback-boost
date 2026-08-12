@@ -78,14 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DajOpinie — więcej opinii Google dla Twojej restauracji" },
+      { title: "DajOpinie — opinie Google dla gastronomii" },
       {
         name: "description",
         content:
-          "Pasywny system stojaków QR, który kieruje gości prosto do opinii w Google Maps.",
+          "DajOpinie to system stojaków QR dla restauracji i kawiarni, który pasywnie zwiększa liczbę opinii w Google Maps.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "DajOpinie" },
+      { property: "og:image", content: "https://smile-feedback-boost.lovable.app/og-cover.jpg" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://smile-feedback-boost.lovable.app/og-cover.jpg" },
     ],
     links: [
       {
@@ -100,7 +103,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "DajOpinie",
+              url: "https://smile-feedback-boost.lovable.app",
+              logo: "https://smile-feedback-boost.lovable.app/og-cover.jpg",
+            },
+            {
+              "@type": "WebSite",
+              name: "DajOpinie",
+              url: "https://smile-feedback-boost.lovable.app",
+              inLanguage: "pl-PL",
+            },
+          ],
+        }),
+      },
+    ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -109,7 +135,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pl">
       <head>
         <HeadContent />
       </head>

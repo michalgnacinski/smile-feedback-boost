@@ -4,22 +4,6 @@ import { Star, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { googleReviewLink } from "@/lib/mock-data";
 
-const title = "Oceń nas w Google — DajOpinie";
-const description = "Zostaw szybką opinię o swojej wizycie. Zajmuje 5 sekund, bez zakładania konta.";
-
-export const Route = createFileRoute("/r/$slug")({
-  head: () => ({
-    meta: [
-      { title },
-      { name: "description", content: description },
-      { property: "og:title", content: title },
-      { property: "og:description", content: description },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: ScanPage,
-});
-
 function parseSlug(slug: string) {
   const match = slug.match(/^(.*)-(\d+)$/);
   const rawName = match?.[1] ?? slug;
@@ -30,6 +14,25 @@ function parseSlug(slug: string) {
     .join(" ");
   return { name, table };
 }
+
+export const Route = createFileRoute("/r/$slug")({
+  head: ({ params }) => {
+    const { name } = parseSlug(params.slug);
+    const title = `Oceń ${name} w Google — DajOpinie`;
+    const description = `Zostaw szybką opinię o wizycie w ${name}. Zajmuje 5 sekund, bez zakładania konta i bez rejestracji.`;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { name: "robots", content: "noindex" },
+      ],
+    };
+  },
+  component: ScanPage,
+});
+
 
 function ScanPage() {
   const { slug } = useParams({ from: "/r/$slug" });

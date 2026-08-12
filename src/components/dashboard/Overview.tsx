@@ -82,9 +82,10 @@ export function Overview() {
         ))}
 
         <Card
-          className="rise-in hover-lift border-primary/40 bg-card"
-          style={{ animationDelay: "270ms" }}
+          className="spring-in hover-lift border-primary/40 bg-card"
+          style={{ animationDelay: "390ms" }}
         >
+
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Status subskrypcji

@@ -1,3 +1,4 @@
+import { Logo } from "@/components/Logo";
 import { useState } from "react";
 import { Menu, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,7 @@ export function Header({ onTrial }: { onTrial: () => void }) {
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <a href="#top" className="flex items-center gap-2">
-          <Star className="size-5 fill-primary text-primary" />
-          <span className="font-display text-lg font-extrabold tracking-tight">DajOpinie</span>
+          <Logo />
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">

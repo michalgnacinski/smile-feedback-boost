@@ -1,3 +1,4 @@
+import { Logo } from "@/components/Logo";
 import { BarChart3, Check, MousePointerClick, QrCode, X } from "lucide-react";
 import {
   Accordion,
@@ -194,7 +195,10 @@ export function Footer() {
   return (
     <footer className="border-t border-border py-10">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-        <p>© {new Date().getFullYear()} DajOpinie.pl — Wszelkie prawa zastrzeżone.</p>
+        <div className="flex flex-col gap-3">
+          <Logo className="self-start" />
+          <p>© {new Date().getFullYear()} DajOpinie.pl — Wszelkie prawa zastrzeżone.</p>
+        </div>
         <div className="flex flex-wrap gap-5">
           <a href="#" className="hover:text-foreground">
             Polityka prywatności

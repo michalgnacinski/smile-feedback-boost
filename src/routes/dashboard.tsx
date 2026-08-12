@@ -9,6 +9,7 @@ import {
   QrCode,
   Star,
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,8 +65,7 @@ function Dashboard() {
       >
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
-            <Star className="size-5 fill-primary text-primary" />
-            <span className="font-display font-extrabold">DajOpinie</span>
+            <Logo />
           </div>
           <button
             className="lg:hidden"

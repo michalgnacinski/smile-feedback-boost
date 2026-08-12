@@ -1,6 +1,7 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { Star, UtensilsCrossed } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { googleReviewLink } from "@/lib/mock-data";
 
@@ -80,6 +81,9 @@ function ScanPage() {
         <p className="mt-8 text-xs text-muted-foreground">
           Skanowanie zajmuje 5 sekund. Nie wymagamy zakładania konta.
         </p>
+        <div className="mt-6 flex justify-center">
+          <Logo imgClassName="h-4" />
+        </div>
       </div>
     </main>
   );

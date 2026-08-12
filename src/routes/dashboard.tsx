@@ -119,7 +119,7 @@ function Dashboard() {
       </aside>
 
       <main className="flex-1 px-4 py-6 pb-24 md:px-8">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <header className="rise-in mb-6 flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: "60ms" }}>
           <div>
             <h1 className="text-2xl font-bold">{nav.find((n) => n.id === view)?.label}</h1>
             <p className="text-sm text-muted-foreground">

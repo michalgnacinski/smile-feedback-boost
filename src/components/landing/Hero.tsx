@@ -106,7 +106,7 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
           </div>
 
           <div
-            className="rise-in mt-8 flex flex-col gap-3 sm:flex-row sm:items-center"
+            className="rise-in mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
             style={{ animationDelay: "380ms" }}
           >
             <Button

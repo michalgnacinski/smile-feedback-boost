@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, QrCode, ShieldCheck } from "lucide-react";
+import { ArrowRight, Handshake, QrCode, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import qrReviewCard from "@/assets/qr-review-card.jpg";
 

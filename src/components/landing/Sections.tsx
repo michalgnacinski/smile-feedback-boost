@@ -42,7 +42,7 @@ const planFeatures = [
   "Anulowanie 1-kliknięciem",
 ];
 
-const faq = [
+export const faq = [
   {
     q: "Czy to jest zgodne z zasadami Google?",
     a: "Tak. Nie oferujemy gościom żadnych nagród ani rabatów za opinie i nie filtrujemy ocen. Kierujemy wyłącznie do oficjalnego okna opinii w Google Maps, co jest w pełni zgodne z wytycznymi Google i Dyrektywą Omnibus.",

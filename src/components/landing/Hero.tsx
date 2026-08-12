@@ -28,6 +28,22 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
             zgodnie z zasadami Google.
           </p>
 
+          <div className="relative mt-6 lg:hidden">
+            <div className="overflow-hidden rounded-2xl border border-border shadow-elevated">
+              <img
+                src={qrReviewCard}
+                alt="Przykładowa karta QR dla restauracji: Twoje Logo, Jak podobała Ci się wizyta?, Podziel się swoją opinią, oraz QR kod z napisem Powered by DajOpinie"
+                width={1024}
+                height={1024}
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="absolute -bottom-5 right-4 hidden rounded-xl border border-border bg-card px-4 py-3 shadow-elevated sm:block">
+              <p className="text-2xl font-bold text-primary">+248</p>
+              <p className="text-xs text-muted-foreground">skanów w tym miesiącu</p>
+            </div>
+          </div>
+
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button size="lg" onClick={onTrial} className="h-14 px-7 text-base font-semibold glow-gold">
               Rozpocznij 14-dniowy darmowy test
@@ -62,7 +78,7 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
 
         </div>
 
-        <div className="relative">
+        <div className="relative hidden lg:block">
           <div className="overflow-hidden rounded-2xl border border-border shadow-elevated">
             <img
               src={qrReviewCard}

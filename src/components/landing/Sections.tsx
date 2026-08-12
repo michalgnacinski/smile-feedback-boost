@@ -1,5 +1,7 @@
 import { Logo } from "@/components/Logo";
+import { Reveal } from "@/hooks/use-in-view";
 import { BarChart3, Check, MousePointerClick, QrCode, X } from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,

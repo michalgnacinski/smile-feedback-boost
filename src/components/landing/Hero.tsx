@@ -78,7 +78,7 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
 
         </div>
 
-        <div className="relative">
+        <div className="relative hidden lg:block">
           <div className="overflow-hidden rounded-2xl border border-border shadow-elevated">
             <img
               src={qrReviewCard}

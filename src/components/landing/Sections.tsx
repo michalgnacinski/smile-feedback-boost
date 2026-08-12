@@ -70,18 +70,21 @@ export function Steps() {
           Trzy kroki i system pracuje za Ciebie
         </h2>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {steps.map((s) => (
-            <Card key={s.title} className="border-border bg-card">
-              <CardContent className="pt-6">
-                <div className="flex size-11 items-center justify-center rounded-lg bg-secondary">
-                  <s.icon className="size-5 text-primary" />
-                </div>
-                <h3 className="mt-5 text-lg font-semibold">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.text}</p>
-              </CardContent>
-            </Card>
+          {steps.map((s, i) => (
+            <Reveal key={s.title} from={i === 1 ? "up" : i === 0 ? "left" : "right"} delay={i * 110}>
+              <Card className="hover-lift h-full border-border bg-card">
+                <CardContent className="pt-6">
+                  <div className="flex size-11 items-center justify-center rounded-lg bg-secondary">
+                    <s.icon className="size-5 text-primary" />
+                  </div>
+                  <h3 className="mt-5 text-lg font-semibold">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.text}</p>
+                </CardContent>
+              </Card>
+            </Reveal>
           ))}
         </div>
+
       </div>
     </section>
   );

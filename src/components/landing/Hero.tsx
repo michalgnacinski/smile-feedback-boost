@@ -112,7 +112,7 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
             <Button
               size="lg"
               onClick={onTrial}
-              className="press sheen h-14 px-7 text-base font-semibold glow-gold"
+              className="press sheen h-14 shrink-0 whitespace-nowrap px-6 text-base font-semibold glow-gold"
             >
               Rozpocznij 14-dniowy darmowy test
               <ArrowRight className="size-5" />
@@ -121,7 +121,7 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
               asChild
               size="lg"
               variant="outline"
-              className="press sheen h-14 border-2 border-primary px-7 text-base font-semibold text-primary hover:bg-primary hover:text-primary-foreground pulse-gold"
+              className="press sheen h-14 shrink-0 whitespace-nowrap border-2 border-primary px-6 text-base font-semibold text-primary hover:bg-primary hover:text-primary-foreground pulse-gold"
             >
               <Link to="/r/$slug" params={{ slug: "pizzeria-la-torre-01" }}>
                 <QrCode className="size-5" />

@@ -51,28 +51,35 @@ function ScanPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10">
-      <div className="w-full max-w-md text-center">
+      <div className="pop-in w-full max-w-md text-center">
         <div className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-border bg-secondary">
           <UtensilsCrossed className="size-7 text-primary" />
         </div>
         <h1 className="mt-4 text-xl font-bold">{name}</h1>
         {table && <p className="mt-1 text-xs text-muted-foreground">Stolik #{table}</p>}
 
-        <h2 className="mt-8 text-2xl font-extrabold leading-snug">
+        <h2 className="rise-in mt-8 text-2xl font-extrabold leading-snug" style={{ animationDelay: "200ms" }}>
           Smakowało? Dziękujemy za wizytę! 🍕
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+        <p
+          className="rise-in mt-3 text-sm leading-relaxed text-muted-foreground"
+          style={{ animationDelay: "300ms" }}
+        >
           Twoja opinia pomaga naszej małej restauracji rosnąć i docierać do nowych gości.
         </p>
 
         <Button
           onClick={handleClick}
           disabled={redirecting}
-          className="mt-10 h-auto w-full flex-col gap-2 rounded-2xl py-5 text-base font-bold glow-gold pulse-gold"
+          className="press sheen sheen-fast breathe mt-10 h-auto w-full flex-col gap-2 rounded-2xl py-5 text-base font-bold glow-gold active:scale-95"
         >
           <span className="flex items-center gap-1">
             {[0, 1, 2, 3, 4].map((i) => (
-              <Star key={i} className="size-5 fill-current" />
+              <Star
+                key={i}
+                className="star-pop size-5 fill-current"
+                style={{ animationDelay: `${420 + i * 110}ms` }}
+              />
             ))}
           </span>
           <span>{redirecting ? "Przekierowujemy do Google…" : "Oceń nas w Google"}</span>
@@ -88,3 +95,4 @@ function ScanPage() {
     </main>
   );
 }
+

@@ -22,8 +22,8 @@ export const Route = createFileRoute("/r/$slug")({
 
 function parseSlug(slug: string) {
   const match = slug.match(/^(.*)-(\d+)$/);
-  const rawName = match ? match[1] : slug;
-  const table = match ? match[2] : null;
+  const rawName = match?.[1] ?? slug;
+  const table = match?.[2] ?? null;
   const name = rawName
     .split("-")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))

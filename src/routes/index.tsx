@@ -1,24 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Header } from "@/components/landing/Header";
+import { Hero } from "@/components/landing/Hero";
+import { Comparison, Faq, Footer, Pricing, Steps } from "@/components/landing/Sections";
+import { TrialDialog } from "@/components/landing/TrialDialog";
+import { ViewSwitcher } from "@/components/ViewSwitcher";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+const title = "DajOpinie — więcej opinii Google dla Twojej restauracji";
+const description =
+  "Pasywny system stojaków QR, który kieruje gości prosto do opinii w Google. 99 PLN netto/msc, zero pracy zespołu, 100% zgodne z zasadami Google.";
+
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title },
+      { name: "description", content: description },
+      { property: "og:title", content: title },
+      { property: "og:description", content: description },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  const [trialOpen, setTrialOpen] = useState(false);
+  const openTrial = () => setTrialOpen(true);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="min-h-screen bg-background">
+      <Header onTrial={openTrial} />
+      <Hero onTrial={openTrial} />
+      <Steps />
+      <Comparison />
+      <Pricing onTrial={openTrial} />
+      <Faq />
+      <Footer />
+      <TrialDialog open={trialOpen} onOpenChange={setTrialOpen} />
+      <ViewSwitcher />
+    </main>
   );
 }

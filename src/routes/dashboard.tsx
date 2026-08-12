@@ -134,12 +134,13 @@ function Dashboard() {
           <div className="space-y-6">
             <Overview />
             <GoogleLinkCard />
-            <QrTables />
+            <QrTables restaurantName={restaurant.name} />
           </div>
         )}
 
-        {view === "qr" && <QrTables />}
+        {view === "qr" && <QrTables restaurantName={restaurant.name} />}
         {view === "google" && <GoogleLinkCard />}
+
 
         {view === "billing" && (
           <Card className="border-border bg-card">

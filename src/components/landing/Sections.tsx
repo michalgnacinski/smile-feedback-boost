@@ -141,41 +141,44 @@ export function Pricing({ onTrial }: { onTrial: () => void }) {
           Bez ukrytych opłat, bez umów rocznych, bez opłaty wdrożeniowej.
         </p>
 
-        <Card className="mt-10 border-primary/40 bg-card text-left shadow-elevated">
-          <CardContent className="p-8">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-semibold">Plan Gastro Starter</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Wszystko czego potrzebuje jeden lokal
-                </p>
+        <Reveal delay={80}>
+          <Card className="mt-10 border-primary/40 bg-card text-left shadow-elevated">
+            <CardContent className="p-8">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold">Plan Gastro Starter</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Wszystko czego potrzebuje jeden lokal
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-4xl font-extrabold text-primary">99 PLN</p>
+                  <p className="text-xs text-muted-foreground">netto / miesiąc</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-4xl font-extrabold text-primary">99 PLN</p>
-                <p className="text-xs text-muted-foreground">netto / miesiąc</p>
-              </div>
-            </div>
 
-            <ul className="mt-8 space-y-3">
-              {planFeatures.map((f) => (
-                <li key={f} className="flex items-center gap-3 text-sm">
-                  <Check className="size-4 shrink-0 text-success" />
-                  {f}
-                </li>
-              ))}
-            </ul>
+              <ul className="mt-8 space-y-3">
+                {planFeatures.map((f) => (
+                  <li key={f} className="flex items-center gap-3 text-sm">
+                    <Check className="size-4 shrink-0 text-success" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
 
-            <Button
-              size="lg"
-              onClick={onTrial}
-              className="mt-8 h-12 w-full font-semibold glow-gold"
-            >
-              Aktywuj 14 dni za darmo (Bez karty)
-            </Button>
-          </CardContent>
-        </Card>
+              <Button
+                size="lg"
+                onClick={onTrial}
+                className="press sheen mt-8 h-12 w-full font-semibold glow-gold"
+              >
+                Aktywuj 14 dni za darmo (Bez karty)
+              </Button>
+            </CardContent>
+          </Card>
+        </Reveal>
       </div>
     </section>
+
   );
 }
 

@@ -102,7 +102,7 @@ export function Overview() {
         </Card>
       </div>
 
-      <Card className="rise-in border-border bg-card" style={{ animationDelay: "340ms" }}>
+      <Card className="rise-in border-border bg-card" style={{ animationDelay: "480ms" }}>
         <CardHeader>
           <CardTitle className="text-base">Liczba skanów QR w ostatnich 14 dniach</CardTitle>
         </CardHeader>

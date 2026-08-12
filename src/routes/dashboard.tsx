@@ -60,9 +60,10 @@ function Dashboard() {
     <div className="min-h-screen bg-background lg:flex">
       <aside
         className={cn(
-          "border-b border-sidebar-border bg-sidebar lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r",
+          "rise-in border-b border-sidebar-border bg-sidebar lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r",
         )}
       >
+
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
             <Logo />

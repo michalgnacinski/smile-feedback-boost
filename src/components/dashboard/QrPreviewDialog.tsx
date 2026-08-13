@@ -10,8 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { downloadDataUrl, printStand, qrDataUrl } from "@/lib/qr";
-import { slugify } from "@/lib/qr";
+import { downloadDataUrl, printStand, qrDataUrl, slugify } from "@/lib/qr";
 
 export function QrPreviewDialog({
   open,
@@ -56,25 +55,52 @@ export function QrPreviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-2xl border border-border bg-secondary p-4">
-          <div className="mx-auto flex max-w-[16rem] flex-col items-center gap-3 rounded-xl bg-brand-surface p-5 text-center shadow-elevated">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-              {restaurantName}
-            </p>
-            <p className="text-sm font-semibold text-slate-900">Jak podobała Ci się wizyta?</p>
-            <div className="grid size-40 place-items-center overflow-hidden rounded-lg border-4 border-primary bg-white">
-              {png ? (
-                <img src={png} alt={`Kod QR — ${label}`} className="h-full w-full object-contain" />
-              ) : (
-                <Loader2 className="size-6 animate-spin text-muted-foreground" />
-              )}
+        {/* KARTA PODGLĄDU STOJANIA 1:1 Z MOJEGO STOLIKA */}
+        <div className="rounded-2xl border border-border bg-slate-950 p-4">
+          <div className="mx-auto flex max-w-[17rem] flex-col items-center justify-between gap-5 rounded-xl bg-[#0B132A] px-5 py-6 text-center shadow-2xl border border-slate-800/80">
+            {/* GÓRA: LOGO I NAGŁÓWKI */}
+            <div>
+              <p className="text-base font-bold text-white tracking-tight">
+                {restaurantName}
+              </p>
+              <p className="mt-3 text-sm font-bold text-[#F59E0B] leading-tight">
+                Jak podobała Ci się wizyta?
+              </p>
+              <p className="mt-1.5 text-xs text-slate-300 font-normal">
+                Podziel się swoją opinią
+              </p>
             </div>
-            <p className="text-[10px] font-medium uppercase tracking-widest text-slate-500">
-              {label} · Powered by DajOpinie
-            </p>
+
+            {/* ŚRODEK: KOD QR ZE ZŁOTYMI NAROŻNIKAMI */}
+            <div className="relative p-2.5">
+              {/* Narożniki akcentowe */}
+              <div className="absolute top-0 left-0 size-4 border-t-2 border-l-2 border-[#F59E0B]" />
+              <div className="absolute top-0 right-0 size-4 border-t-2 border-r-2 border-[#F59E0B]" />
+              <div className="absolute bottom-0 left-0 size-4 border-b-2 border-l-2 border-[#F59E0B]" />
+              <div className="absolute bottom-0 right-0 size-4 border-b-2 border-r-2 border-[#F59E0B]" />
+
+              <div className="grid size-36 place-items-center overflow-hidden rounded-md bg-white p-1.5 shadow-md">
+                {png ? (
+                  <img src={png} alt={`Kod QR — ${label}`} className="h-full w-full object-contain" />
+                ) : (
+                  <Loader2 className="size-6 animate-spin text-slate-400" />
+                )}
+              </div>
+            </div>
+
+            {/* DÓŁ: ETYKIETA STOLIKA I STOPKA Z GWIAZDKĄ */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 mb-1">
+                {label}
+              </p>
+              <p className="flex items-center justify-center gap-1 text-[10px] text-slate-400 font-medium">
+                Powered by DajOpinie <span className="text-[#F59E0B] text-xs">★</span>
+              </p>
+            </div>
           </div>
         </div>
 
+        {/* INPUT Z LINKIEM */}
         <div className="flex items-center gap-2">
           <Input readOnly value={url} className="font-mono text-xs" />
           <Button variant="outline" size="icon" onClick={copy} aria-label="Kopiuj link">
@@ -82,6 +108,7 @@ export function QrPreviewDialog({
           </Button>
         </div>
 
+        {/* PRZYCISKI AKCJI */}
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             className="flex-1 font-semibold"
@@ -93,7 +120,7 @@ export function QrPreviewDialog({
             }}
           >
             <Download className="size-4" />
-            Pobierz PNG
+            Pobierz QR
           </Button>
           <Button
             variant="outline"

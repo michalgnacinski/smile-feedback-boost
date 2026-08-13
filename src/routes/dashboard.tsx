@@ -141,10 +141,7 @@ function Dashboard() {
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 px-4 py-6 pb-24 md:px-8">
-        <header
-          className="rise-in mb-6 flex flex-wrap items-center justify-between gap-3"
-          style={{ animationDelay: "60ms" }}
-        >
+        <header className="rise-in mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">
               {nav.find((n) => n.id === view)?.label}
@@ -153,8 +150,12 @@ function Dashboard() {
               {dashboardData?.restaurantName || "Ładowanie..."} · Kraków
             </p>
           </div>
-          <Badge variant="outline" className="border-primary/50 text-primary">
-            Okres próbny · 9 dni
+
+          {/* JEDEN DYNAMICZNY BADGE Z NEONDB */}
+          <Badge className="bg-primary text-primary-foreground font-semibold">
+            {dashboardData?.subscription?.status === "TRIAL"
+              ? `Okres próbny (zostało ${dashboardData?.subscription?.trialDaysLeft ?? 0} dni)`
+              : "Subskrypcja aktywna"}
           </Badge>
         </header>
 
@@ -213,16 +214,25 @@ function Dashboard() {
                     <span className="text-muted-foreground">Plan</span>
                     <span className="font-medium">Gastro Starter — 99 PLN netto / msc</span>
                   </div>
+
                   <div className="flex items-center justify-between border-b border-border pb-3">
                     <span className="text-muted-foreground">Status</span>
-                    <Badge className="bg-primary text-primary-foreground hover:bg-primary">
-                      Okres próbny (zostało 9 dni)
+                    <Badge className="bg-primary text-primary-foreground font-semibold">
+                      {dashboardData?.subscription?.status === "TRIAL"
+                        ? `Okres próbny (zostało ${dashboardData?.subscription?.trialDaysLeft ?? 0} dni)`
+                        : "Aktywna subskrypcja"}
                     </Badge>
                   </div>
+
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Pierwsze obciążenie</span>
-                    <span className="font-medium">21.08.2026</span>
+                    <span className="font-medium">
+                      {dashboardData?.subscription?.trialEndsAt
+                        ? new Date(dashboardData.subscription.trialEndsAt).toLocaleDateString("pl-PL")
+                        : "—"}
+                    </span>
                   </div>
+
                   <Button className="mt-2 font-semibold">Dodaj metodę płatności</Button>
                 </CardContent>
               </Card>

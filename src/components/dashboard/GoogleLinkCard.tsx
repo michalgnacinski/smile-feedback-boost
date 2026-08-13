@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, ExternalLink, HelpCircle, Link2, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Check, ExternalLink, HelpCircle, Link2, Pencil, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,11 +10,79 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { googleReviewLink } from "@/lib/mock-data";
 
-export function GoogleLinkCard() {
-  const [link, setLink] = useState(googleReviewLink);
+interface GoogleLinkCardProps {
+  initialLink?: string;
+  slug?: string;
+}
+
+// Przykładowy profil Google Maps do testów
+const DEFAULT_TEST_LINK = "https://search.google.com/local/writereview?placeid=ChIJN1t_tDeuEmsRUsoyG83frY4";
+
+export function GoogleLinkCard({
+  initialLink,
+  slug = "pizzeria-la-torre",
+}: GoogleLinkCardProps) {
+  const [link, setLink] = useState(initialLink || DEFAULT_TEST_LINK);
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (initialLink) {
+      setLink(initialLink);
+    }
+  }, [initialLink]);
+
+  // Pomocnicza funkcja formatująca poprawny URL
+  const formatUrl = (rawUrl: string) => {
+    let clean = rawUrl.trim();
+    if (!clean) return "";
+    if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
+      clean = `https://${clean}`;
+    }
+    return clean;
+  };
+
+  // Testowanie linku w nowej karcie
+  const handleTestLink = () => {
+    const targetUrl = formatUrl(link);
+    if (!targetUrl) {
+      toast.error("Wprowadź najpierw poprawny link Google!");
+      return;
+    }
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+  };
+
+  // Zapis do bazy danych
+  const handleSave = async () => {
+    if (editing) {
+      const formatted = formatUrl(link);
+      setSaving(true);
+
+      try {
+        const response = await fetch(`/api/restaurant/${slug}/google-link`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ googleReviewLink: formatted }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Nie udało się zapisać linku");
+        }
+
+        setLink(formatted);
+        toast.success("Link do opinii został zapisany w bazie!");
+        setEditing(false);
+      } catch (err) {
+        console.error(err);
+        toast.error("Błąd podczas zapisywania linku do bazy");
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      setEditing(true);
+    }
+  };
 
   return (
     <Card className="rise-in border-border bg-card" style={{ animationDelay: "80ms" }}>
@@ -31,7 +99,7 @@ export function GoogleLinkCard() {
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-xs">
                 Jak pobrać ten link z Google Maps? Otwórz profil firmy w Google, kliknij „Poproś o
-                opinie” i skopiuj wygenerowany krótki link (g.page/r/…/review).
+                opinie” i skopiuj wygenerowany krótki link.
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -49,25 +117,30 @@ export function GoogleLinkCard() {
             onChange={(e) => setLink(e.target.value)}
             aria-label="Link do opinii Google"
             className="border-0 bg-transparent font-mono text-xs shadow-none focus-visible:ring-0"
+            placeholder="https://g.page/r/.../review"
           />
           <div className="flex gap-2 sm:shrink-0">
             <Button
               variant={editing ? "default" : "outline"}
               className="flex-1 sm:flex-none"
-              onClick={() => {
-                if (editing) toast.success("Link do opinii zapisany");
-                setEditing((v) => !v);
-              }}
+              disabled={saving}
+              onClick={handleSave}
             >
-              {editing ? <Check className="size-4" /> : <Pencil className="size-4" />}
+              {saving ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : editing ? (
+                <Check className="size-4 mr-1" />
+              ) : (
+                <Pencil className="size-4 mr-1" />
+              )}
               {editing ? "Zapisz" : "Edytuj"}
             </Button>
             <Button
               variant="ghost"
               className="flex-1 sm:flex-none"
-              onClick={() => window.open(link, "_blank", "noopener,noreferrer")}
+              onClick={handleTestLink}
             >
-              <ExternalLink className="size-4" />
+              <ExternalLink className="size-4 mr-1" />
               Testuj link
             </Button>
           </div>

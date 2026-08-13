@@ -22,9 +22,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrPreviewDialog } from "@/components/dashboard/QrPreviewDialog";
-import { conversion, qrTables, type TableQr } from "@/lib/mock-data";
 import { downloadDataUrl, printStand, qrDataUrl, slugify, tableUrl } from "@/lib/qr";
 import { cn } from "@/lib/utils";
+
+export interface TableItem {
+  id: string;
+  label: string;
+  codeIdentifier: string;
+  scans: number;
+  clicks: number;
+  conversion?: string;
+  url?: string;
+}
 
 function MiniQr({ url, className }: { url: string; className?: string }) {
   const [src, setSrc] = useState<string | null>(null);
@@ -47,22 +56,42 @@ function MiniQr({ url, className }: { url: string; className?: string }) {
   );
 }
 
-export function QrTables({ restaurantName = "Pizzeria La Torre" }: { restaurantName?: string }) {
-  const [tables, setTables] = useState<TableQr[]>(qrTables);
+interface QrTablesProps {
+  restaurantName?: string;
+  tables?: TableItem[];
+}
+
+export function QrTables({
+  restaurantName = "Pizzeria La Torre",
+  tables: initialTables,
+}: QrTablesProps) {
+  const [tables, setTables] = useState<TableItem[]>(initialTables || []);
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
-  const [preview, setPreview] = useState<TableQr | null>(null);
+  const [preview, setPreview] = useState<TableItem | null>(null);
+
+  // Synchronizacja po pobraniu danych z API
+  useEffect(() => {
+    if (initialTables && initialTables.length > 0) {
+      setTables(initialTables);
+    }
+  }, [initialTables]);
 
   const slug = slugify(restaurantName);
-  const urlFor = (t: TableQr) => tableUrl(slug, t.label);
+  const urlFor = (t: TableItem) => t.url || tableUrl(slug, t.label);
 
-  const downloadOne = async (t: TableQr) => {
+  const getConversionNumber = (t: TableItem) => {
+    if (t.scans === 0) return 0;
+    return Number(((t.clicks / t.scans) * 100).toFixed(1));
+  };
+
+  const downloadOne = async (t: TableItem) => {
     const png = await qrDataUrl(urlFor(t), 1024);
     downloadDataUrl(png, `qr-${slugify(t.label)}.png`);
     toast.success(`Pobrano QR: ${t.label} (PNG)`);
   };
 
-  const printOne = async (t: TableQr) => {
+  const printOne = async (t: TableItem) => {
     const png = await qrDataUrl(urlFor(t), 1024);
     if (!printStand(t.label, restaurantName, png))
       toast.error("Zezwól na wyskakujące okna, aby wydrukować stojak");
@@ -70,6 +99,7 @@ export function QrTables({ restaurantName = "Pizzeria La Torre" }: { restaurantN
 
   return (
     <div className="space-y-4">
+      {/* BANER ZBIORCZEGO DRUKOWANIA */}
       <Card className="rise-in border-primary/40 bg-card" style={{ animationDelay: "60ms" }}>
         <CardContent className="grid grid-cols-1 items-center gap-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex min-w-0 items-center gap-3">
@@ -88,30 +118,32 @@ export function QrTables({ restaurantName = "Pizzeria La Torre" }: { restaurantN
               className="font-semibold"
               onClick={() => toast.success("Pakiet ZIP ze wszystkimi kodami QR jest generowany")}
             >
-              <Download className="size-4" />
+              <Download className="size-4 mr-1" />
               Pobierz zbiorczo (ZIP)
             </Button>
             <Button
               variant="outline"
               onClick={() => toast.success("Szablony stojaków dla wszystkich stolików gotowe")}
             >
-              <Printer className="size-4" />
+              <Printer className="size-4 mr-1" />
               Wydrukuj wszystkie
             </Button>
           </div>
         </CardContent>
       </Card>
 
+      {/* LISTA STOLIKÓW */}
       <Card className="rise-in border-border bg-card" style={{ animationDelay: "140ms" }}>
         <CardHeader className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <CardTitle className="flex min-w-0 items-center gap-2 text-base">
             <QrCode className="size-4 shrink-0 text-primary" />
             <span className="truncate">Kody QR i stoliki</span>
           </CardTitle>
+
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="w-full font-semibold sm:w-auto">
-                <Plus className="size-4" />
+                <Plus className="size-4 mr-1" />
                 Dodaj stolik / kod QR
               </Button>
             </DialogTrigger>
@@ -123,11 +155,13 @@ export function QrTables({ restaurantName = "Pizzeria La Torre" }: { restaurantN
                 className="space-y-4"
                 onSubmit={(e) => {
                   e.preventDefault();
+                  const newLabel = label || `Stolik #${tables.length + 1}`;
                   setTables((t) => [
                     ...t,
                     {
                       id: crypto.randomUUID(),
-                      label: label || `Stolik #${t.length + 1}`,
+                      label: newLabel,
+                      codeIdentifier: slugify(newLabel),
                       scans: 0,
                       clicks: 0,
                     },
@@ -170,7 +204,6 @@ export function QrTables({ restaurantName = "Pizzeria La Torre" }: { restaurantN
               className="rise-in hover-lift grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-xl border border-border bg-secondary/40 p-3 lg:grid-cols-[auto_minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto]"
               style={{ animationDelay: `${220 + i * 50}ms` }}
             >
-
               <button
                 type="button"
                 onClick={() => setPreview(t)}
@@ -204,21 +237,26 @@ export function QrTables({ restaurantName = "Pizzeria La Torre" }: { restaurantN
                   <span className="block text-[10px] uppercase text-muted-foreground lg:hidden">
                     Konwersja
                   </span>
-                  <CountUpText value={conversion(t)} decimals={1} suffix="%" delay={i * 70} />
+                  <CountUpText
+                    value={getConversionNumber(t)}
+                    decimals={1}
+                    suffix="%"
+                    delay={i * 70}
+                  />
                 </span>
               </div>
 
               <div className="col-span-2 flex flex-wrap justify-end gap-2 lg:col-span-1">
                 <Button size="sm" className="font-semibold" onClick={() => downloadOne(t)}>
-                  <Download className="size-4" />
+                  <Download className="size-4 mr-1" />
                   Pobierz QR
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setPreview(t)}>
-                  <Eye className="size-4" />
+                  <Eye className="size-4 mr-1" />
                   <span className="lg:sr-only xl:not-sr-only">Podgląd</span>
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => printOne(t)}>
-                  <FileText className="size-4" />
+                  <FileText className="size-4 mr-1" />
                   <span className="lg:sr-only xl:not-sr-only">Drukuj stojak PDF</span>
                 </Button>
               </div>

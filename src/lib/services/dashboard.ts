@@ -1,43 +1,33 @@
-export async function getRestaurantDashboardData({ data: slug }: { data: string }) {
-  // Symulowane opóźnienie sieciowe (200ms) dla płynnego efektu ładowania
-  await new Promise((resolve) => setTimeout(resolve, 200));
+// 💡 Ustaw na 'false', aby pobierać żywe dane z bazy NeonDB!
+export const DEMO_MODE = false;
 
-  // Wracamy dane zgodne ze strukturą naszej bazy NeonDB
-  return {
-    restaurantName: "Pizzeria La Torre",
-    googleReviewLink: "https://g.page/r/ExampleID/review",
-    stats: {
-      totalScans: 10,
-      totalClicks: 6,
-      conversionRate: "60.0%",
-      estimatedReviews: 5,
-    },
-    chartData: [
-      { date: "01.08", skany: 2 },
-      { date: "02.08", skany: 1 },
-      { date: "03.08", skany: 3 },
-      { date: "04.08", skany: 0 },
-      { date: "05.08", skany: 4 },
-    ],
-    tables: [
-      {
-        id: "1",
-        label: "Stolik #01",
-        codeIdentifier: "pizzeria-la-torre-stolik01",
-        scans: 8,
-        clicks: 5,
-        conversion: "62.5%",
-        url: "https://dajopinie.pl/r/pizzeria-la-torre-stolik01",
+export async function getRestaurantDashboardData({ data: slug }: { data: string }) {
+  if (DEMO_MODE) {
+    return {
+      restaurantName: "Pizzeria La Torre (Tryb DEMO)",
+      googleReviewLink: "https://g.page/r/ExampleID/review",
+      subscription: {
+        status: "TRIAL",
+        trialDaysLeft: 9,
+        trialEndsAt: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
       },
-      {
-        id: "2",
-        label: "Bar / Lada",
-        codeIdentifier: "pizzeria-la-torre-bar",
-        scans: 2,
-        clicks: 1,
-        conversion: "50.0%",
-        url: "https://dajopinie.pl/r/pizzeria-la-torre-bar",
+      stats: {
+        totalScans: 248,
+        totalClicks: 164,
+        conversionRate: "66.1%",
+        estimatedReviews: 28,
       },
-    ],
-  };
+      chartData: [
+        { date: "01.08", skany: 12 },
+        { date: "02.08", skany: 22 },
+      ],
+      tables: [],
+    };
+  }
+
+  const response = await fetch(`/api/dashboard/${slug}`);
+  if (!response.ok) {
+    throw new Error("Błąd pobierania danych z API NeonDB");
+  }
+  return await response.json();
 }

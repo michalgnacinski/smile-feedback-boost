@@ -40,7 +40,7 @@ async function main() {
       name: 'Pizzeria La Torre',
       slug: 'pizzeria-la-torre',
       logo_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&h=200&fit=crop&crop=faces',
-      google_review_link: 'https://search.google.com/local/writereview?placeid=ChIJN1t_tDeuEmsRUsoyG83frY4',
+      google_review_link: null, // Początkowo brak linku do opinii Google
       is_active: true,
       subscription_status: 'TRIAL',
       trial_started_at: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),

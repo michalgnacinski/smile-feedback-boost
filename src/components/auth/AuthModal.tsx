@@ -38,7 +38,6 @@ export function AuthModal({
     e.preventDefault();
     setLoading(true);
 
-    // 👈 Podajemy bezpośredni adres do naszego serwera Express na porcie 3001:
     const API_BASE = "http://localhost:3001";
     const endpoint = mode === "register" ? `${API_BASE}/api/auth/register` : `${API_BASE}/api/auth/login`;
 
@@ -58,6 +57,11 @@ export function AuthModal({
 
       if (!res.ok) {
         throw new Error(data.error || "Wystąpił błąd");
+      }
+
+      // 👈 ZAPAMIĘTUJEMY TOKEN W PRZEGLĄDARCE:
+      if (data.token) {
+        localStorage.setItem("dajopinie_token", data.token);
       }
 
       toast.success(
@@ -80,9 +84,22 @@ export function AuthModal({
       <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-center">
-            {mode === "register"
-              ? "Wypróbuj DajOpinie 14 dni za darmo"
-              : "Zaloguj się do panelu"}
+            {mode === "register" ? (
+              <>
+                Wypróbuj{" "}
+                <span className="text-primary font-extrabold drop-shadow-[0_0_10px_rgba(245,158,11,0.6)]">
+                  DajOpinie
+                </span>{" "}
+                14 dni za darmo
+              </>
+            ) : (
+              <>
+                Zaloguj się do{" "}
+                <span className="text-primary font-extrabold drop-shadow-[0_0_10px_rgba(245,158,11,0.6)]">
+                  DajOpinie
+                </span>
+              </>
+            )}
           </DialogTitle>
           <DialogDescription className="text-center text-xs">
             {mode === "register"

@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 export const SITE_ORIGIN = "https://dajopinie.pl";
 
 export function slugify(value: string) {
@@ -182,4 +183,28 @@ export function printStand(label: string, restaurantName: string, dataUrl: strin
 
   w.document.close();
   return true;
+}
+
+export async function downloadAllQrsAsZip(
+  tables: Array<{ label: string; codeIdentifier: string }>,
+  restaurantName: string
+) {
+  const zip = new JSZip();
+  const folder = zip.folder(`kody-qr-${slugify(restaurantName)}`);
+
+  for (const table of tables) {
+    const tableUrl = `${SITE_ORIGIN}/r/${table.codeIdentifier}`;
+    const qrData = await qrDataUrl(tableUrl, 1024);
+    // Usuwamy prefiks data:image/png;base64, aby uzyskać sam ciąg base64
+    const base64Data = qrData.replace(/^data:image\/png;base64,/, "");
+    folder?.file(`QR-${slugify(table.label)}.png`, base64Data, { base64: true });
+  }
+
+  const content = await zip.generateAsync({ type: "blob" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(content);
+  a.download = `kody-qr-${slugify(restaurantName)}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }

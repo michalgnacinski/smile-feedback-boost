@@ -25,7 +25,18 @@ export async function getRestaurantDashboardData({ data: slug }: { data: string 
     };
   }
 
-  const response = await fetch(`/api/dashboard/${slug}`);
+  const token = typeof window !== "undefined" ? localStorage.getItem("dajopinie_token") : null;
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const url = slug 
+    ? `http://localhost:3001/api/dashboard?slug=${slug}`
+    : `http://localhost:3001/api/dashboard`;
+
+  const response = await fetch(url, { headers });
   if (!response.ok) {
     throw new Error("Błąd pobierania danych z API NeonDB");
   }

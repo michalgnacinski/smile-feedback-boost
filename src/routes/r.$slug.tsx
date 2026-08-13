@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Star, UtensilsCrossed } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/r/$slug")({
   head: () => ({
@@ -56,6 +57,12 @@ export function ScanPage() {
   // 2. Rejestracja KLIKNIĘCIA i przekierowanie do Google Reviews
   const handleClick = async () => {
     if (!scanData) return;
+    
+    if (!scanData.googleReviewLink) {
+      toast.error("Ta restauracja nie skonfigurowała jeszcze profilu opinii Google.");
+      return;
+    }
+
     setRedirecting(true);
 
     try {
@@ -63,12 +70,7 @@ export function ScanPage() {
     } catch (e) {
       console.error("Błąd zapisu kliknięcia:", e);
     } finally {
-      const targetLink =
-        scanData.googleReviewLink && !scanData.googleReviewLink.includes("ExampleID")
-          ? scanData.googleReviewLink
-          : "https://search.google.com/local/writereview?placeid=ChIJN1t_tDeuEmsRUsoyG83frY4";
-
-      window.location.href = targetLink;
+      window.location.href = scanData.googleReviewLink;
     }
   };
 

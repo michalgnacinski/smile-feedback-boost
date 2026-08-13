@@ -1,12 +1,15 @@
 import "dotenv/config";
 import express from "express";
-import { db } from "./lib/db";
 import cors from "cors";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { db } from "./lib/db";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const JWT_SECRET = process.env.JWT_SECRET || "dajopinie_super_secret_key_123!";
 
 function slugify(text: string) {
   return text
@@ -23,7 +26,7 @@ function slugify(text: string) {
     .replace(/^-|-$/g, "");
 }
 
-// Login
+// 1. REJESTRACJA UŻYTKOWNIKA I RESTAURACJI
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { restaurantName, email, password } = req.body;
@@ -32,16 +35,13 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(400).json({ error: "Wypełnij wszystkie pola!" });
     }
 
-    // Sprawdzenie czy użytkownik istnieje
     const existingUser = await db.users.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: "Konto o podanym adresie e-mail już istnieje!" });
+      return res.status(400).json({ error: "Konto z tym adresem e-mail już istnieje!" });
     }
 
-    // Haszowanie hasła
     const password_hash = await bcrypt.hash(password, 10);
 
-    // Wyliczenie daty końca trialu (+14 dni)
     const now = new Date();
     const trialEnds = new Date(now);
     trialEnds.setDate(now.getDate() + 14);
@@ -50,19 +50,14 @@ app.post("/api/auth/register", async (req, res) => {
     let slug = baseSlug;
     let counter = 1;
 
-    // Zapewnienie unikalności sluga
     while (await db.restaurants.findUnique({ where: { slug } })) {
       slug = `${baseSlug}-${counter}`;
       counter++;
     }
 
-    // Tworzenie użytkownika, restauracji oraz pierwszego kodu QR w jednej transakcji
     const result = await db.$transaction(async (tx) => {
       const newUser = await tx.users.create({
-        data: {
-          email,
-          password_hash,
-        },
+        data: { email, password_hash },
       });
 
       const newRestaurant = await tx.restaurants.create({
@@ -76,7 +71,6 @@ app.post("/api/auth/register", async (req, res) => {
         },
       });
 
-      // Tworzenie pierwszego kodu QR dla Stolika #01
       await tx.qr_codes.create({
         data: {
           restaurant_id: newRestaurant.id,
@@ -88,8 +82,16 @@ app.post("/api/auth/register", async (req, res) => {
       return { user: newUser, restaurant: newRestaurant };
     });
 
+    // Wygenerowanie tokenu sesji
+    const token = jwt.sign(
+      { userId: result.user.id, email: result.user.email },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
     return res.json({
       success: true,
+      token,
       user: { id: result.user.id, email: result.user.email },
       restaurantSlug: result.restaurant.slug,
     });
@@ -120,8 +122,15 @@ app.post("/api/auth/login", async (req, res) => {
 
     const firstRestaurant = user.restaurants[0];
 
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
     return res.json({
       success: true,
+      token,
       user: { id: user.id, email: user.email },
       restaurantSlug: firstRestaurant?.slug || "pizzeria-la-torre",
     });
@@ -131,22 +140,55 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// 1. DASHBOARD DATA
-app.get("/api/dashboard/:slug", async (req, res) => {
+// 3. DANE DASHBOARDU (Rozpoznaje zalogowanego użytkownika po tokenie)
+app.get("/api/dashboard", async (req, res) => {
   try {
-    const { slug } = req.params;
+    const authHeader = req.headers.authorization;
+    let userId: string | null = null;
 
-    const restaurant = await db.restaurants.findUnique({
-      where: { slug },
-      include: {
-        qr_codes: {
-          include: {
-            analytics_events: true,
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        userId = decoded.userId;
+      } catch (e) {
+        // Token wygasł lub jest nieprawidłowy
+      }
+    }
+
+    let userRestaurants = userId
+      ? await db.restaurants.findMany({ where: { user_id: userId } })
+      : [];
+
+    let restaurant;
+
+    if (userRestaurants.length > 0) {
+      // Wybieramy restaurację na podstawie parametru slug z query (lub pierwszą z listy)
+      const requestedSlug = req.query.slug as string;
+      restaurant =
+        userRestaurants.find((r) => r.slug === requestedSlug) || userRestaurants[0];
+
+      // Dociągamy szczegóły wybranej restauracji (kody QR, zdarzenia)
+      restaurant = await db.restaurants.findUnique({
+        where: { id: restaurant.id },
+        include: {
+          qr_codes: {
+            include: { analytics_events: true },
           },
         },
-      },
-    });
+      });
+    } else {
+      // Domyślny fallback, gdy brak zalogowanego użytkownika
+      restaurant = await db.restaurants.findFirst({
+        include: {
+          qr_codes: {
+            include: { analytics_events: true },
+          },
+        },
+      });
+    }
 
+    // Fallback: jeśli brak tokenu, pobierzmy pierwszą restaurację z bazy
     if (!restaurant) {
       return res.status(404).json({ error: "Nie znaleziono restauracji" });
     }
@@ -176,11 +218,7 @@ app.get("/api/dashboard/:slug", async (req, res) => {
           new Date(e.created_at).toISOString().split("T")[0] === dateStr
       ).length;
 
-      return {
-        date: dayLabel,
-        skany: scansOnDay,
-        scans: scansOnDay,
-      };
+      return { date: dayLabel, skany: scansOnDay, scans: scansOnDay };
     });
 
     const tablesData = restaurant.qr_codes.map((qr) => {
@@ -200,7 +238,15 @@ app.get("/api/dashboard/:slug", async (req, res) => {
 
     return res.json({
       restaurantName: restaurant.name,
+      slug: restaurant.slug,
+      logoUrl: restaurant.logo_url,
       googleReviewLink: restaurant.google_review_link,
+      // 👈 Przekazujemy listę tylko tych lokali, które należą do zalogowanego konta:
+      userRestaurants: userRestaurants.map((r) => ({
+        name: r.name,
+        slug: r.slug,
+        logoUrl: r.logo_url,
+      })),
       subscription: {
         status: restaurant.subscription_status,
         trialDaysLeft,
@@ -221,7 +267,7 @@ app.get("/api/dashboard/:slug", async (req, res) => {
   }
 });
 
-// 2. AKTUALIZACJA LINKU GOOGLE
+// AKTUALIZACJA LINKU GOOGLE
 app.patch("/api/restaurant/:slug/google-link", async (req, res) => {
   try {
     const { slug } = req.params;
@@ -239,7 +285,7 @@ app.patch("/api/restaurant/:slug/google-link", async (req, res) => {
   }
 });
 
-// 3. REJESTRACJA SKANU QR
+// REJESTRACJA SKANU QR
 app.post("/api/scan/:codeIdentifier", async (req, res) => {
   try {
     const { codeIdentifier } = req.params;
@@ -264,7 +310,7 @@ app.post("/api/scan/:codeIdentifier", async (req, res) => {
     return res.json({
       qrCodeId: qrCode.id,
       restaurantName: qrCode.restaurant.name,
-      logoUrl: qrCode.restaurant.logo_url, // 👈 Przekazujemy adres logo
+      logoUrl: qrCode.restaurant.logo_url,
       tableLabel: qrCode.label,
       googleReviewLink: qrCode.restaurant.google_review_link,
     });
@@ -274,7 +320,7 @@ app.post("/api/scan/:codeIdentifier", async (req, res) => {
   }
 });
 
-// 4. REJESTRACJA KLIKNIĘCIA
+// REJESTRACJA KLIKNIĘCIA
 app.post("/api/click/:qrCodeId", async (req, res) => {
   try {
     const { qrCodeId } = req.params;
@@ -293,6 +339,85 @@ app.post("/api/click/:qrCodeId", async (req, res) => {
     return res.status(500).json({ error: "Błąd serwera" });
   }
 });
-
 const PORT = process.env.PORT || 3001;
+
+// TWORZENIE NOWEGO STOLIKA / KODU QR
+app.post("/api/qr-codes", async (req, res) => {
+  try {
+    const { restaurantSlug, label } = req.body;
+
+    if (!restaurantSlug || !label) {
+      return res.status(400).json({ error: "Podaj nazwę stolika" });
+    }
+
+    const restaurant = await db.restaurants.findUnique({
+      where: { slug: restaurantSlug },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ error: "Nie znaleziono restauracji" });
+    }
+
+    const codeIdentifier = `${restaurantSlug}-${slugify(label)}-${Date.now().toString().slice(-4)}`;
+
+    const newQr = await db.qr_codes.create({
+      data: {
+        restaurant_id: restaurant.id,
+        label,
+        code_identifier: codeIdentifier,
+      },
+    });
+
+    return res.json({
+      success: true,
+      qrCode: {
+        id: newQr.id,
+        label: newQr.label,
+        codeIdentifier: newQr.code_identifier,
+        scans: 0,
+        clicks: 0,
+        conversion: "0%",
+        url: `https://dajopinie.pl/r/${newQr.code_identifier}`,
+      },
+    });
+  } catch (error) {
+    console.error("Błąd podczas dodawania stolika:", error);
+    return res.status(500).json({ error: "Błąd serwera przy dodawaniu stolika" });
+  }
+});
+
+// USUWANIE STOLIKA / KODU QR
+app.delete("/api/qr-codes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await db.qr_codes.delete({
+      where: { id },
+    });
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Błąd podczas usuwania stolika:", error);
+    return res.status(500).json({ error: "Błąd serwera przy usuwaniu stolika" });
+  }
+});
+
+app.patch("/api/restaurant/:slug/logo", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { logoUrl } = req.body;
+
+    const updated = await db.restaurants.update({
+      where: { slug },
+      data: { logo_url: logoUrl || null },
+    });
+
+    return res.json({ success: true, logoUrl: updated.logo_url });
+  } catch (error) {
+    console.error("Błąd podczas zapisu logo:", error);
+    return res.status(500).json({ error: "Błąd serwera przy zapisie logo" });
+  }
+});
+
 app.listen(PORT, () => console.log(`🚀 API Express nasłuchuje na porcie ${PORT}`));
+

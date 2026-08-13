@@ -4,9 +4,11 @@ import {
   Eye,
   FileText,
   Layers,
+  Loader2,
   Plus,
   Printer,
   QrCode,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CountUpText } from "@/hooks/use-count-up";
@@ -22,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrPreviewDialog } from "@/components/dashboard/QrPreviewDialog";
-import { downloadDataUrl, printStand, qrDataUrl, slugify, tableUrl } from "@/lib/qr";
+import { downloadAllQrsAsZip, downloadDataUrl, printStand, qrDataUrl, slugify, tableUrl } from "@/lib/qr";
 import { cn } from "@/lib/utils";
 
 export interface TableItem {
@@ -58,27 +60,34 @@ function MiniQr({ url, className }: { url: string; className?: string }) {
 
 interface QrTablesProps {
   restaurantName?: string;
+  restaurantSlug?: string;
   tables?: TableItem[];
+  onRefresh?: () => void;
 }
 
 export function QrTables({
   restaurantName = "Pizzeria La Torre",
+  restaurantSlug,
   tables: initialTables,
+  onRefresh,
 }: QrTablesProps) {
   const [tables, setTables] = useState<TableItem[]>(initialTables || []);
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
   const [preview, setPreview] = useState<TableItem | null>(null);
+  
+  const [isAdding, setIsAdding] = useState(false);
+  const [isZipping, setIsZipping] = useState(false);
 
-  // Synchronizacja po pobraniu danych z API
   useEffect(() => {
-    if (initialTables && initialTables.length > 0) {
+    if (initialTables) {
       setTables(initialTables);
     }
   }, [initialTables]);
 
-  const slug = slugify(restaurantName);
-  const urlFor = (t: TableItem) => t.url || tableUrl(slug, t.label);
+  // 👈 Jeśli restaurantSlug nie został przekazany, wyliczamy go dynamicznie z nazwy restauracji
+  const slug = restaurantSlug || slugify(restaurantName);
+  const urlFor = (t: TableItem) => t.url || tableUrl(slug, t.codeIdentifier || slugify(t.label));
 
   const getConversionNumber = (t: TableItem) => {
     if (t.scans === 0) return 0;
@@ -95,6 +104,81 @@ export function QrTables({
     const png = await qrDataUrl(urlFor(t), 1024);
     if (!printStand(t.label, restaurantName, png))
       toast.error("Zezwól na wyskakujące okna, aby wydrukować stojak");
+  };
+
+  // Pobieranie wszystkich kodów QR jako plik ZIP
+  const handleDownloadZip = async () => {
+    if (tables.length === 0) return;
+    setIsZipping(true);
+    try {
+      await downloadAllQrsAsZip(tables, restaurantName);
+      toast.success("Pobrano paczkę ZIP ze wszystkimi kodami QR!");
+    } catch (err) {
+      toast.error("Błąd podczas pakowania ZIP");
+    } finally {
+      setIsZipping(false);
+    }
+  };
+
+  // Drukowanie wszystkich stojaków naraz
+  const handlePrintAll = async () => {
+    if (tables.length === 0) return;
+    for (const t of tables) {
+      const png = await qrDataUrl(urlFor(t), 1024);
+      printStand(t.label, restaurantName, png);
+    }
+    toast.success("Otwarto okna drukowania dla wszystkich stojaków");
+  };
+
+  // Dodawanie nowego stolika z zapisem w bazie Express/NeonDB
+  const handleAddTable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newLabel = label.trim() || `Stolik #${tables.length + 1}`;
+
+    setIsAdding(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/qr-codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restaurantSlug: slug, label: newLabel }),
+      });
+
+      if (!res.ok) throw new Error("Błąd podczas tworzenia stolika");
+
+      toast.success(`Kod QR dla "${newLabel}" został zapisany!`);
+      setLabel("");
+      setOpen(false);
+
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (err) {
+      toast.error("Nie udało się dodać nowego stolika");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  // Usuwanie stolika z bazy
+  const handleDeleteTable = async (t: TableItem) => {
+    if (!confirm(`Czy na pewno chcesz usunąć kod QR dla: "${t.label}"?`)) return;
+
+    try {
+      const res = await fetch(`http://localhost:3001/api/qr-codes/${t.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Błąd usuwania");
+
+      toast.success(`Usunięto kod QR dla "${t.label}"`);
+      if (onRefresh) {
+        onRefresh();
+      } else {
+        setTables((prev) => prev.filter((item) => item.id !== t.id));
+      }
+    } catch (err) {
+      toast.error("Błąd podczas usuwania stolika");
+    }
   };
 
   return (
@@ -116,14 +200,20 @@ export function QrTables({
           <div className="flex flex-wrap gap-2">
             <Button
               className="font-semibold"
-              onClick={() => toast.success("Pakiet ZIP ze wszystkimi kodami QR jest generowany")}
+              disabled={isZipping || tables.length === 0}
+              onClick={handleDownloadZip}
             >
-              <Download className="size-4 mr-1" />
+              {isZipping ? (
+                <Loader2 className="size-4 mr-1 animate-spin" />
+              ) : (
+                <Download className="size-4 mr-1" />
+              )}
               Pobierz zbiorczo (ZIP)
             </Button>
             <Button
               variant="outline"
-              onClick={() => toast.success("Szablony stojaków dla wszystkich stolików gotowe")}
+              disabled={tables.length === 0}
+              onClick={handlePrintAll}
             >
               <Printer className="size-4 mr-1" />
               Wydrukuj wszystkie
@@ -142,46 +232,28 @@ export function QrTables({
 
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="w-full font-semibold sm:w-auto">
+              <Button size="sm" className="w-full font-semibold sm:w-auto glow-gold">
                 <Plus className="size-4 mr-1" />
                 Dodaj stolik / kod QR
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-sm">
+            <DialogContent className="sm:max-w-sm bg-card border-border">
               <DialogHeader>
                 <DialogTitle>Nowy kod QR</DialogTitle>
               </DialogHeader>
-              <form
-                className="space-y-4"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const newLabel = label || `Stolik #${tables.length + 1}`;
-                  setTables((t) => [
-                    ...t,
-                    {
-                      id: crypto.randomUUID(),
-                      label: newLabel,
-                      codeIdentifier: slugify(newLabel),
-                      scans: 0,
-                      clicks: 0,
-                    },
-                  ]);
-                  setLabel("");
-                  setOpen(false);
-                  toast.success("Kod QR wygenerowany");
-                }}
-              >
+              <form className="space-y-4" onSubmit={handleAddTable}>
                 <div className="space-y-2">
-                  <Label htmlFor="qr-label">Etykieta</Label>
+                  <Label htmlFor="qr-label">Etykieta stolika / strefy</Label>
                   <Input
                     id="qr-label"
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
-                    placeholder="Stolik #05"
+                    placeholder="np. Stolik #05, Bar, Ogródek #01"
+                    autoFocus
                   />
                 </div>
-                <Button type="submit" className="w-full">
-                  Wygeneruj kod
+                <Button type="submit" disabled={isAdding} className="w-full font-bold">
+                  {isAdding ? <Loader2 className="size-4 animate-spin" /> : "Wygeneruj kod"}
                 </Button>
               </form>
             </DialogContent>
@@ -233,7 +305,7 @@ export function QrTables({
                   </span>
                   <CountUpText value={t.clicks} delay={i * 70} />
                 </span>
-                <span className="text-primary lg:text-right">
+                <span className="text-primary lg:text-right font-semibold">
                   <span className="block text-[10px] uppercase text-muted-foreground lg:hidden">
                     Konwersja
                   </span>
@@ -246,18 +318,27 @@ export function QrTables({
                 </span>
               </div>
 
-              <div className="col-span-2 flex flex-wrap justify-end gap-2 lg:col-span-1">
-                <Button size="sm" className="font-semibold" onClick={() => downloadOne(t)}>
-                  <Download className="size-4 mr-1" />
+              <div className="col-span-2 flex flex-wrap justify-end gap-1.5 lg:col-span-1">
+                <Button size="sm" className="font-semibold text-xs" onClick={() => downloadOne(t)}>
+                  <Download className="size-3.5 mr-1" />
                   Pobierz QR
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setPreview(t)}>
-                  <Eye className="size-4 mr-1" />
+                  <Eye className="size-3.5 mr-1" />
                   <span className="lg:sr-only xl:not-sr-only">Podgląd</span>
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => printOne(t)}>
-                  <FileText className="size-4 mr-1" />
-                  <span className="lg:sr-only xl:not-sr-only">Drukuj stojak PDF</span>
+                  <FileText className="size-3.5 mr-1" />
+                  <span className="lg:sr-only xl:not-sr-only">Stojak PDF</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDeleteTable(t)}
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive px-2"
+                  title="Usuń stolik"
+                >
+                  <Trash2 className="size-3.5" />
                 </Button>
               </div>
             </div>

@@ -11,8 +11,10 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api": {
-        target: "http://localhost:3001",
+        // 👇 Podmień na rzeczywisty URL swojego backendu produkcyjnego:
+        target: "https://smile-feedback-boost.vercel.app", 
         changeOrigin: true,
+        secure: true,
       },
     },
   },

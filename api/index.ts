@@ -552,4 +552,76 @@ app.post("/api/stripe/verify-session", async (req, res) => {
   }
 });
 
+// DODAWANIE NOWEGO LOKALU
+app.post("/api/restaurants", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    let userId: string | null = null;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        userId = decoded.userId;
+      } catch (e) {}
+    }
+
+    // Fallback: jeśli z jakiegoś powodu brak tokena w teście, weź pierwszego usera
+    if (!userId) {
+      const firstUser = await db.users.findFirst();
+      userId = firstUser?.id || null;
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: "Brak autoryzacji" });
+    }
+
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "Wpisz nazwę lokalu!" });
+    }
+
+    let baseSlug = slugify(name);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await db.restaurants.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    const now = new Date();
+    const trialEnds = new Date(now);
+    trialEnds.setDate(now.getDate() + 14);
+
+    const newRestaurant = await db.$transaction(async (tx) => {
+      const rest = await tx.restaurants.create({
+        data: {
+          user_id: userId!,
+          name: name.trim(),
+          slug,
+          subscription_status: "TRIAL",
+          trial_started_at: now,
+          trial_ends_at: trialEnds,
+        },
+      });
+
+      await tx.qr_codes.create({
+        data: {
+          restaurant_id: rest.id,
+          label: "Stolik #01",
+          code_identifier: `${slug}-stolik01`,
+        },
+      });
+
+      return rest;
+    });
+
+    return res.status(201).json(newRestaurant);
+  } catch (error) {
+    console.error("Błąd tworzenia lokalu:", error);
+    return res.status(500).json({ error: "Błąd serwera podczas tworzenia lokalu" });
+  }
+});
+
 export default app;

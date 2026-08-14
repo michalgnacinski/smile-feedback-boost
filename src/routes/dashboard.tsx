@@ -8,14 +8,31 @@ import {
   Link2,
   LogOut,
   Menu,
+  Plus,
   QrCode,
   Store,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +72,11 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<any>(null);
+
+  // Stan modala tworzenia nowej restauracji
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newRestaurantName, setNewRestaurantName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const fetchData = (slug?: string | null) => {
     setLoading(true);
@@ -102,6 +124,43 @@ export function Dashboard() {
     window.location.href = "/";
   };
 
+  const handleCreateRestaurant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRestaurantName.trim()) return;
+
+    setCreating(true);
+    const token = localStorage.getItem("dajopinie_token");
+
+    try {
+      const res = await fetch("/api/restaurants", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({ name: newRestaurantName.trim() }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Błąd serwera (404/500)" }));
+        throw new Error(errData.error || "Błąd zapisu");
+      }
+
+      const data = await res.json();
+
+      toast.success(`Lokal "${data.name}" został utworzony!`);
+      setNewRestaurantName("");
+      setCreateModalOpen(false);
+
+      // Przełączamy na nowy slug i pobieramy dane
+      setActiveSlug(data.slug);
+    } catch (err: any) {
+      toast.error(err.message || "Nie udało się utworzyć lokalu.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const scrollToGoogleCard = () => {
     setView("google");
     setTimeout(() => {
@@ -130,18 +189,18 @@ export function Dashboard() {
           <Logo />
         </div>
 
-        {/* PRZEŁĄCZNIK LOKALU */}
-        <div className="p-4">
+        {/* PRZEŁĄCZNIK LOKALU + PRZYCISK DODAWANIA LOKALU */}
+        <div className="p-4 flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between text-xs font-semibold">
+              <Button variant="outline" className="flex-1 justify-between text-xs font-semibold">
                 <span className="truncate">
                   {dashboardData?.restaurantName || "Pobieranie lokalu..."}
                 </span>
-                <ChevronDown className="size-4 shrink-0 opacity-50" />
+                <ChevronDown className="size-4 shrink-0 opacity-50 ml-1" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 bg-card border-border">
+            <DropdownMenuContent align="start" className="w-48 bg-card border-border">
               {dashboardData?.userRestaurants && dashboardData.userRestaurants.length > 0 ? (
                 dashboardData.userRestaurants.map((rest: { name: string; slug: string }) => (
                   <DropdownMenuItem
@@ -159,6 +218,25 @@ export function Dashboard() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Przycisk Plusa z Tooltipem */}
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 shrink-0 border-border bg-card hover:bg-primary/20 hover:text-primary transition"
+                  onClick={() => setCreateModalOpen(true)}
+                >
+                  <Plus className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">
+                Dodaj lokal
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* NAWIGACJA DESKTOP */}
@@ -214,12 +292,12 @@ export function Dashboard() {
         {/* ROZWIJANE MENU MOBILNE */}
         {mobileMenuOpen && (
           <div className="border-b border-border bg-card px-4 py-4 lg:hidden animate-in fade-in slide-in-from-top-2">
-            <div className="mb-4">
+            <div className="mb-4 flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between text-xs font-semibold">
+                  <Button variant="outline" className="flex-1 justify-between text-xs font-semibold">
                     <span className="truncate">{dashboardData?.restaurantName}</span>
-                    <ChevronDown className="size-4 opacity-50" />
+                    <ChevronDown className="size-4 opacity-50 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-full bg-card border-border">
@@ -237,6 +315,18 @@ export function Dashboard() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-9 shrink-0 border-border"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setCreateModalOpen(true);
+                }}
+              >
+                <Plus className="size-4" />
+              </Button>
             </div>
 
             <nav className="flex flex-col gap-1">
@@ -281,7 +371,6 @@ export function Dashboard() {
           {/* NAGŁÓWEK DANEGO WIDOKU */}
           <div className="mb-8 sm:mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
             <div className="flex items-center gap-4">
-              {/* POWIĘKSZONE LOGO (56px) */}
               <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl border border-border bg-slate-900/90 p-2 shadow-md shrink-0 ring-1 ring-white/10">
                 {dashboardData?.logoUrl ? (
                   <img
@@ -440,6 +529,40 @@ export function Dashboard() {
           )}
         </main>
       </div>
+
+      {/* MODAL DODAWANIA NOWEGO LOKALU */}
+      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+        <DialogContent className="bg-card border-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dodaj nowy lokal</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Podaj nazwę dla nowego lokalu lub oddziału.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateRestaurant} className="space-y-4 pt-2">
+            <Input
+              placeholder="np. KFC Galeria Krakowska"
+              value={newRestaurantName}
+              onChange={(e) => setNewRestaurantName(e.target.value)}
+              disabled={creating}
+              autoFocus
+            />
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateModalOpen(false)}
+                disabled={creating}
+              >
+                Anuluj
+              </Button>
+              <Button type="submit" disabled={creating || !newRestaurantName.trim()}>
+                {creating ? "Tworzenie..." : "Dodaj lokal"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -28,7 +28,7 @@ export function GoogleLinkCard({ slug, initialLink, isHighlighted }: GoogleLinkC
       const res = await fetch(`/api/restaurant/${slug}/google-link`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ googleReviewLink: link }),
+        body: JSON.stringify({ googleReviewLink: googleLink }),
       });
 
       if (!res.ok) throw new Error("Błąd podczas zapisu");

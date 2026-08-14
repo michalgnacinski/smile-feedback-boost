@@ -44,10 +44,11 @@ export function LogoUploadCard({
   const handleSave = async (newUrl: string | null) => {
     setSaving(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/restaurant/${slug}/logo`, {
+      const targetSlug = slug || "dajopinie";
+      const res = await fetch(`/api/restaurant/${targetSlug}/logo`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logoUrl: newUrl }),
+        body: JSON.stringify({ logoUrl }),
       });
 
       if (!res.ok) throw new Error("Błąd zapisu");

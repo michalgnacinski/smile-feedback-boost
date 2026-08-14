@@ -432,7 +432,7 @@ app.post("/api/qr-codes", async (req, res) => {
   try {
     const { restaurantSlug, label } = req.body;
     if (!restaurantSlug || !label) {
-      return res.status(400).json({ error: "Podaj nazwę stolika" });
+      return res.status(400).json({ error: "Podaj nazwę stolika i restauracji" });
     }
 
     const restaurant = await db.restaurants.findUnique({
@@ -443,12 +443,12 @@ app.post("/api/qr-codes", async (req, res) => {
       return res.status(404).json({ error: "Nie znaleziono restauracji" });
     }
 
+    // Pozwalamy na dodawanie stolików w trakcie aktywnego trialu lub subskrypcji ACTIVE
     const now = new Date();
-    if (
-      restaurant.subscription_status !== "ACTIVE" &&
-      restaurant.trial_ends_at &&
-      new Date(restaurant.trial_ends_at) < now
-    ) {
+    const isTrialValid = restaurant.subscription_status === "TRIAL" && (!restaurant.trial_ends_at || new Date(restaurant.trial_ends_at) > now);
+    const isActive = restaurant.subscription_status === "ACTIVE";
+
+    if (!isTrialValid && !isActive) {
       return res.status(403).json({
         error: "Twój okres próbny wygasł. Aktywuj subskrypcję, aby dodawać nowe stoliki.",
       });
@@ -477,6 +477,7 @@ app.post("/api/qr-codes", async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Błąd api/qr-codes:", error);
     return res.status(500).json({ error: "Błąd serwera" });
   }
 });

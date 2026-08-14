@@ -8,10 +8,10 @@ interface OverviewProps {
     conversionRate: string;
     estimatedReviews: number;
   };
-  chartData?: Array<{ date: string; skany: number }>;
+  chartData?: Array<{ date: string; skany: number; scans?: number }>;
 }
 
-export function Overview({ stats, chartData }: OverviewProps) {
+export function Overview({ stats, chartData = [] }: OverviewProps) {
   return (
     <div className="space-y-6">
       {/* STATYSTYKI */}
@@ -23,7 +23,7 @@ export function Overview({ stats, chartData }: OverviewProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats?.totalScans ?? 0}</div>
+            <div className="text-3xl font-bold text-white">{stats?.totalScans ?? 0}</div>
             <p className="mt-1 text-xs text-muted-foreground">Ostatnie 14 dni</p>
           </CardContent>
         </Card>
@@ -35,7 +35,7 @@ export function Overview({ stats, chartData }: OverviewProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats?.totalClicks ?? 0}</div>
+            <div className="text-3xl font-bold text-white">{stats?.totalClicks ?? 0}</div>
             <p className="mt-1 text-xs font-medium text-primary">
               Konwersja {stats?.conversionRate ?? "0%"}
             </p>
@@ -49,7 +49,7 @@ export function Overview({ stats, chartData }: OverviewProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">~{stats?.estimatedReviews ?? 0}</div>
+            <div className="text-3xl font-bold text-[#F59E0B]">~{stats?.estimatedReviews ?? 0}</div>
             <p className="mt-1 text-xs text-muted-foreground">W tym miesiącu</p>
           </CardContent>
         </Card>
@@ -58,13 +58,15 @@ export function Overview({ stats, chartData }: OverviewProps) {
       {/* RYSOWANIE WYKRESU */}
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Liczba skanów QR w ostatnich 14 dniach</CardTitle>
+          <CardTitle className="text-base font-bold text-white">
+            Liczba skanów QR w ostatnich 14 dniach
+          </CardTitle>
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
-          <div className="h-60 sm:h-64 w-full">
+          <div className="h-60 sm:h-64 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={chartData || []}
+                data={chartData}
                 margin={{ top: 10, right: 10, left: -22, bottom: 0 }}
               >
                 <defs>
@@ -79,8 +81,8 @@ export function Overview({ stats, chartData }: OverviewProps) {
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
-                  interval="preserveStartEnd" // Auto-dopasowanie ilości dat
-                  minTickGap={25} // Bezpieczny odstęp między datami
+                  interval="preserveStartEnd"
+                  minTickGap={25}
                 />
                 <YAxis
                   stroke="#94A3B8"

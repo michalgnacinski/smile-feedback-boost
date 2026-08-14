@@ -57,6 +57,7 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/5kQ5kD12h8pm8eE17c3Je00";
+const STRIPE_CUSTOMER_PORTAL_LINK = "https://billing.stripe.com/p/login/5kQ5kD12h8pm8eE17c3Je00";
 
 const nav = [
   { id: "overview", label: "Panel Analityczny", icon: LayoutDashboard },
@@ -494,21 +495,29 @@ export function Dashboard() {
                       </Badge>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        {dashboardData?.subscription?.status === "ACTIVE"
-                          ? "Kolejne odnowienie"
-                          : "Pierwsze obciążenie (koniec trialu)"}
-                      </span>
-                      <span className="font-semibold font-mono">
-                        {dashboardData?.subscription?.status === "ACTIVE"
-                          ? dashboardData?.subscription?.nextBillingAt
-                            ? new Date(dashboardData.subscription.nextBillingAt).toLocaleDateString("pl-PL")
-                            : "Za 1 miesiąc"
-                          : dashboardData?.subscription?.trialEndsAt
-                            ? new Date(dashboardData.subscription.trialEndsAt).toLocaleDateString("pl-PL")
-                            : "—"}
-                      </span>
+                    <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                      {dashboardData?.subscription?.status === "ACTIVE" ? (
+                        // Jeśli ma aktywną subskrypcję -> prowadzi do portalu faktur i kart
+                        <Button
+                          onClick={() => {
+                            window.location.href = STRIPE_CUSTOMER_PORTAL_LINK;
+                          }}
+                          variant="outline"
+                          className="font-bold w-full sm:w-auto"
+                        >
+                          Zarządzaj subskrypcją i pobierz faktury VAT →
+                        </Button>
+                      ) : (
+                        // Jeśli jest w trialu -> prowadzi do opłacenia
+                        <Button
+                          onClick={() => {
+                            window.location.href = STRIPE_PAYMENT_LINK;
+                          }}
+                          className="font-bold w-full sm:w-auto glow-gold"
+                        >
+                          Aktywuj subskrypcję (99 PLN / msc)
+                        </Button>
+                      )}
                     </div>
 
                     <Button

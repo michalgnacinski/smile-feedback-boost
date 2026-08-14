@@ -519,18 +519,6 @@ export function Dashboard() {
                         </Button>
                       )}
                     </div>
-
-                    <Button
-                      onClick={() => {
-                        window.location.href = STRIPE_PAYMENT_LINK;
-                      }}
-                      disabled={dashboardData?.subscription?.status === "ACTIVE"}
-                      className="mt-2 font-bold w-full sm:w-auto glow-gold"
-                    >
-                      {dashboardData?.subscription?.status === "ACTIVE"
-                        ? "Subskrypcja aktywna"
-                        : "Aktywuj subskrypcję (99 PLN / msc)"}
-                    </Button>
                   </CardContent>
                 </Card>
               )}

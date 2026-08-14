@@ -4,7 +4,13 @@ import { Pool } from "pg";
 
 const connectionString = process.env.DATABASE_URL;
 
-const pool = new Pool({ connectionString });
+// Konfiguracja puli połączeń z obsługą SSL dla NeonDB w środowisku Vercel
+const pool = new Pool({
+  connectionString,
+  ssl: connectionString?.includes("neon.tech") ? { rejectUnauthorized: false } : undefined,
+  max: 10,
+});
+
 const adapter = new PrismaPg(pool);
 
 const globalForPrisma = globalThis as unknown as {

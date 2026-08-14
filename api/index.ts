@@ -3,14 +3,77 @@ import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { db } from "../src/lib/db";
-import { sendWelcomeEmail, sendMilestoneEmail, sendTrialEndingEmail } from "../src/lib/services/email";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+import { Resend } from "resend";
 import Stripe from "stripe";
 
+// 1. BAZA DANYCH (POŁĄCZENIE Z NEONDB)
+const connectionString = process.env.DATABASE_URL;
+const pool = new Pool({
+  connectionString,
+  ssl: connectionString?.includes("neon.tech") ? { rejectUnauthorized: false } : undefined,
+  max: 10,
+});
+const adapter = new PrismaPg(pool);
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
+const db = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+// 2. RESEND EMAIL SERVICE
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "DajOpinie <onboarding@resend.dev>";
+const APP_URL = process.env.APP_URL || "https://dajopinie.pl";
+
+async function sendWelcomeEmail(to: string, restaurantName: string, slug: string) {
+  if (!resend) return;
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: `Witaj w DajOpinie — Twój lokal ${restaurantName} jest gotowy!`,
+      html: `
+        <div style="background-color:#0b0f17; color:#f8fafc; font-family:sans-serif; padding:30px; border-radius:12px;">
+          <h1 style="color:#ffffff;">Witaj w DajOpinie! 🚀</h1>
+          <p style="color:#94a3b8;">Twój lokal <strong>${restaurantName}</strong> został pomyślnie utworzony. Rozpocząłeś 14-dniowy darmowy okres próbny.</p>
+          <a href="${APP_URL}/dashboard" style="display:inline-block; background:#f59e0b; color:#000; font-weight:bold; padding:12px 24px; border-radius:8px; text-decoration:none; margin-top:16px;">Otwórz Panel →</a>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Błąd Resend welcome:", err);
+  }
+}
+
+async function sendMilestoneEmail(to: string, restaurantName: string, milestoneCount: number) {
+  if (!resend) return;
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: `🎉 Gratulacje! Twój lokal ${restaurantName} osiągnął ${milestoneCount} skanów!`,
+      html: `
+        <div style="background-color:#0b0f17; color:#f8fafc; font-family:sans-serif; padding:30px; border-radius:12px;">
+          <h1 style="color:#ffffff;">Świetny wynik! Pierwsze ${milestoneCount} skanów 🏆</h1>
+          <p style="color:#94a3b8;">Goście w Twoim lokalu <strong>${restaurantName}</strong> zeskanowali kody QR już ponad ${milestoneCount} razy!</p>
+          <a href="${APP_URL}/dashboard" style="display:inline-block; background:#f59e0b; color:#000; font-weight:bold; padding:12px 24px; border-radius:8px; text-decoration:none; margin-top:16px;">Zobacz panel →</a>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Błąd Resend milestone:", err);
+  }
+}
+
+// 3. STRIPE
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2023-10-16" as any,
 });
 
+// 4. APLIKACJA EXPRESS
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -29,7 +92,7 @@ function slugify(text: string) {
     .replace(/[śş]/g, "s")
     .replace(/[żź]/g, "z")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/^-+|-+$/g, "");
 }
 
 // 1. REJESTRACJA
@@ -220,7 +283,6 @@ app.get("/api/dashboard", async (req, res) => {
       return { date: dayLabel, skany: scansOnDay, scans: scansOnDay };
     });
 
-    const APP_URL = process.env.APP_URL || "";
     const tablesData = restaurant.qr_codes.map((qr) => {
       const scans = qr.analytics_events.filter((e) => e.event_type === "SCAN").length;
       const clicks = qr.analytics_events.filter((e) => e.event_type === "CLICK").length;
@@ -393,7 +455,6 @@ app.post("/api/qr-codes", async (req, res) => {
     }
 
     const codeIdentifier = `${restaurantSlug}-${slugify(label)}-${Date.now().toString().slice(-4)}`;
-    const APP_URL = process.env.APP_URL || "";
 
     const newQr = await db.qr_codes.create({
       data: {
@@ -443,8 +504,6 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
     if (!restaurant) {
       return res.status(404).json({ error: "Nie znaleziono restauracji" });
     }
-
-    const APP_URL = process.env.APP_URL || "https://dajopinie.pl";
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card", "blik"],

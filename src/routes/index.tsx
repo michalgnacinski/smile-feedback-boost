@@ -3,8 +3,7 @@ import { useState } from "react";
 import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
 import { Comparison, Faq, Footer, Pricing, Steps, faq } from "@/components/landing/Sections";
-import { TrialDialog } from "@/components/landing/TrialDialog";
-import { ViewSwitcher } from "@/components/ViewSwitcher";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 const SITE_URL = "https://smile-feedback-boost.lovable.app";
 const title = "Więcej opinii Google dla restauracji | DajOpinie";
@@ -39,22 +38,38 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-
 function Index() {
-  const [trialOpen, setTrialOpen] = useState(false);
-  const openTrial = () => setTrialOpen(true);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("register");
+
+  // Otwiera modal w trybie Rejestracji (14 dni testu)
+  const openRegister = () => {
+    setAuthMode("register");
+    setAuthOpen(true);
+  };
+
+  // Otwiera modal w trybie Logowania
+  const openLogin = () => {
+    setAuthMode("login");
+    setAuthOpen(true);
+  };
 
   return (
     <main className="min-h-screen bg-background">
-      <Header onTrial={openTrial} />
-      <Hero onTrial={openTrial} />
+      <Header onTrial={openRegister} onLogin={openLogin} />
+      <Hero onTrial={openRegister} />
       <Steps />
       <Comparison />
-      <Pricing onTrial={openTrial} />
+      <Pricing onTrial={openRegister} />
       <Faq />
       <Footer />
-      <TrialDialog open={trialOpen} onOpenChange={setTrialOpen} />
-      <ViewSwitcher />
+
+      {/* JEDYNY GŁÓWNY MODAL OBSŁUGUJĄCY LOGOWANIE I REJESTRACJĘ */}
+      <AuthModal
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        initialMode={authMode}
+      />
     </main>
   );
 }

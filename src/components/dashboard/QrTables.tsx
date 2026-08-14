@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrPreviewDialog } from "@/components/dashboard/QrPreviewDialog";
-import { downloadAllQrsAsZip, downloadDataUrl, printStand, qrDataUrl, slugify, tableUrl } from "@/lib/qr";
+import { downloadAllQrsAsZip, downloadDataUrl, printStand, qrDataUrl, slugify } from "@/lib/qr";
 import { cn } from "@/lib/utils";
 
 export interface TableItem {
@@ -61,6 +61,7 @@ function MiniQr({ url, className }: { url: string; className?: string }) {
 interface QrTablesProps {
   restaurantName?: string;
   restaurantSlug?: string;
+  logoUrl?: string | null;
   tables?: TableItem[];
   onRefresh?: () => void;
 }
@@ -68,6 +69,7 @@ interface QrTablesProps {
 export function QrTables({
   restaurantName = "Pizzeria La Torre",
   restaurantSlug,
+  logoUrl,
   tables: initialTables,
   onRefresh,
 }: QrTablesProps) {
@@ -85,9 +87,14 @@ export function QrTables({
     }
   }, [initialTables]);
 
-  // 👈 Jeśli restaurantSlug nie został przekazany, wyliczamy go dynamicznie z nazwy restauracji
   const slug = restaurantSlug || slugify(restaurantName);
-  const urlFor = (t: TableItem) => t.url || tableUrl(slug, t.codeIdentifier || slugify(t.label));
+
+  const urlFor = (t: TableItem) => {
+    if (t.url && t.url.startsWith("http")) return t.url;
+    const identifier = t.codeIdentifier || `${slug}-${slugify(t.label)}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:8080";
+    return `${origin}/r/${identifier}`;
+  };
 
   const getConversionNumber = (t: TableItem) => {
     if (t.scans === 0) return 0;
@@ -95,23 +102,38 @@ export function QrTables({
   };
 
   const downloadOne = async (t: TableItem) => {
-    const png = await qrDataUrl(urlFor(t), 1024);
+    const targetUrl = urlFor(t);
+    const png = await qrDataUrl(targetUrl, 1024);
     downloadDataUrl(png, `qr-${slugify(t.label)}.png`);
     toast.success(`Pobrano QR: ${t.label} (PNG)`);
   };
 
   const printOne = async (t: TableItem) => {
-    const png = await qrDataUrl(urlFor(t), 1024);
-    if (!printStand(t.label, restaurantName, png))
+    const targetUrl = urlFor(t);
+    const png = await qrDataUrl(targetUrl, 1024);
+    if (!printStand(t.label, restaurantName, png, logoUrl)) {
       toast.error("Zezwól na wyskakujące okna, aby wydrukować stojak");
+    }
   };
 
-  // Pobieranie wszystkich kodów QR jako plik ZIP
+  const handlePrintAll = async () => {
+    if (tables.length === 0) return;
+    for (const t of tables) {
+      const png = await qrDataUrl(urlFor(t), 1024);
+      printStand(t.label, restaurantName, png, logoUrl);
+    }
+    toast.success("Otwarto okna drukowania dla wszystkich stojaków");
+  };
+
   const handleDownloadZip = async () => {
     if (tables.length === 0) return;
     setIsZipping(true);
     try {
-      await downloadAllQrsAsZip(tables, restaurantName);
+      const mappedTables = tables.map((t) => ({
+        ...t,
+        url: urlFor(t),
+      }));
+      await downloadAllQrsAsZip(mappedTables, restaurantName);
       toast.success("Pobrano paczkę ZIP ze wszystkimi kodami QR!");
     } catch (err) {
       toast.error("Błąd podczas pakowania ZIP");
@@ -120,24 +142,13 @@ export function QrTables({
     }
   };
 
-  // Drukowanie wszystkich stojaków naraz
-  const handlePrintAll = async () => {
-    if (tables.length === 0) return;
-    for (const t of tables) {
-      const png = await qrDataUrl(urlFor(t), 1024);
-      printStand(t.label, restaurantName, png);
-    }
-    toast.success("Otwarto okna drukowania dla wszystkich stojaków");
-  };
-
-  // Dodawanie nowego stolika z zapisem w bazie Express/NeonDB
   const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
     const newLabel = label.trim() || `Stolik #${tables.length + 1}`;
 
     setIsAdding(true);
     try {
-      const res = await fetch("http://localhost:3001/api/qr-codes", {
+      const res = await fetch("/api/qr-codes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ restaurantSlug: slug, label: newLabel }),
@@ -159,12 +170,11 @@ export function QrTables({
     }
   };
 
-  // Usuwanie stolika z bazy
   const handleDeleteTable = async (t: TableItem) => {
     if (!confirm(`Czy na pewno chcesz usunąć kod QR dla: "${t.label}"?`)) return;
 
     try {
-      const res = await fetch(`http://localhost:3001/api/qr-codes/${t.id}`, {
+      const res = await fetch(`/api/qr-codes/${t.id}`, {
         method: "DELETE",
       });
 
@@ -199,7 +209,7 @@ export function QrTables({
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
-              className="font-semibold"
+              className="font-semibold glow-gold"
               disabled={isZipping || tables.length === 0}
               onClick={handleDownloadZip}
             >
@@ -252,7 +262,7 @@ export function QrTables({
                     autoFocus
                   />
                 </div>
-                <Button type="submit" disabled={isAdding} className="w-full font-bold">
+                <Button type="submit" disabled={isAdding} className="w-full font-bold glow-gold">
                   {isAdding ? <Loader2 className="size-4 animate-spin" /> : "Wygeneruj kod"}
                 </Button>
               </form>
@@ -352,6 +362,7 @@ export function QrTables({
         label={preview?.label ?? ""}
         url={preview ? urlFor(preview) : ""}
         restaurantName={restaurantName}
+        logoUrl={logoUrl}
       />
     </div>
   );

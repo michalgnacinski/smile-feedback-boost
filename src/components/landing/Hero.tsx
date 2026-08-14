@@ -123,7 +123,7 @@ export function Hero({ onTrial }: { onTrial: () => void }) {
             variant="outline"
             className="press sheen h-14 shrink-0 whitespace-nowrap border-2 border-primary px-6 text-base font-semibold text-primary hover:bg-primary hover:text-primary-foreground pulse-gold transition-transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            <Link to="/r/$slug" params={{ slug: "pizzeria-la-torre-stolik01" }}>
+            <Link to="/r/demo">
               <QrCode className="size-5" />
               Zobacz jak to działa (Demo QR)
             </Link>

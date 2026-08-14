@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2, Lock, Mail, Store } from "lucide-react";
 import { toast } from "sonner";
@@ -34,12 +34,21 @@ export function AuthModal({
 
   const navigate = useNavigate();
 
+  // 👈 KLUCZOWA POPRAWKA: Synchronizacja trybu po kliknięciu "Zaloguj się" vs "Wypróbuj 14 dni"
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode);
+      setRestaurantName("");
+      setEmail("");
+      setPassword("");
+    }
+  }, [open, initialMode]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const API_BASE = "http://localhost:3001";
-    const endpoint = mode === "register" ? `${API_BASE}/api/auth/register` : `${API_BASE}/api/auth/login`;
+    const endpoint = mode === "register" ? "/api/auth/register" : "/api/auth/login";
 
     const payload =
       mode === "register"
@@ -59,7 +68,6 @@ export function AuthModal({
         throw new Error(data.error || "Wystąpił błąd");
       }
 
-      // 👈 ZAPAMIĘTUJEMY TOKEN W PRZEGLĄDARCE:
       if (data.token) {
         localStorage.setItem("dajopinie_token", data.token);
       }
@@ -104,7 +112,7 @@ export function AuthModal({
           <DialogDescription className="text-center text-xs">
             {mode === "register"
               ? "Bez podawania karty kredytowej. Konfiguracja w 60 sekund."
-              : "Wpisz swoje dane, aby przejść do zarządzenia opiniami."}
+              : "Wpisz swoje dane, aby przejść do panelu menadżera."}
           </DialogDescription>
         </DialogHeader>
 
@@ -123,6 +131,7 @@ export function AuthModal({
                   onChange={(e) => setRestaurantName(e.target.value)}
                   placeholder="np. Pizzeria La Torre"
                   className="pl-9 text-sm"
+                  autoFocus
                 />
               </div>
             </div>
@@ -142,6 +151,7 @@ export function AuthModal({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="wlasciciel@restauracja.pl"
                 className="pl-9 text-sm"
+                autoFocus={mode === "login"}
               />
             </div>
           </div>

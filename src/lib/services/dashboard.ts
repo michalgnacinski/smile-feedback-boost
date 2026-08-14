@@ -25,20 +25,13 @@ export async function getRestaurantDashboardData({ data: slug }: { data: string 
     };
   }
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("dajopinie_token") : null;
-
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const url = slug 
-    ? `http://localhost:3001/api/dashboard?slug=${slug}`
-    : `http://localhost:3001/api/dashboard`;
-
-  const response = await fetch(url, { headers });
-  if (!response.ok) {
-    throw new Error("Błąd pobierania danych z API NeonDB");
-  }
-  return await response.json();
+  const token = localStorage.getItem("dajopinie_token");
+  const url = data ? `/api/dashboard?slug=${encodeURIComponent(data)}` : "/api/dashboard";
+  const res = await fetch(url, {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+  });
+  if (!res.ok) throw new Error("Błąd pobierania dashboardu");
+  return res.json();
 }

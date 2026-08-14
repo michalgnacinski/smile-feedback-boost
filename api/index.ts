@@ -3,12 +3,11 @@ import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { db } from "./lib/db";
-import { sendWelcomeEmail, sendMilestoneEmail, sendTrialEndingEmail } from "./lib/services/email";
-
+import { db } from "../src/lib/db";
+import { sendWelcomeEmail, sendMilestoneEmail, sendTrialEndingEmail } from "../src/lib/services/email";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2023-10-16" as any,
 });
 
@@ -29,15 +28,14 @@ function slugify(text: string) {
     .replace(/[óòôö]/g, "o")
     .replace(/[śş]/g, "s")
     .replace(/[żź]/g, "z")
-    .replace(/[^a-z0-9]+/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
 
-// 1. REJESTRACJA UŻYTKOWNIKA I RESTAURACJI
+// 1. REJESTRACJA
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { restaurantName, email, password } = req.body;
-
     if (!restaurantName || !email || !password) {
       return res.status(400).json({ error: "Wypełnij wszystkie pola!" });
     }
@@ -48,7 +46,6 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-
     const now = new Date();
     const trialEnds = new Date(now);
     trialEnds.setDate(now.getDate() + 14);
@@ -89,7 +86,6 @@ app.post("/api/auth/register", async (req, res) => {
       return { user: newUser, restaurant: newRestaurant };
     });
 
-    // Wygenerowanie tokenu sesji
     const token = jwt.sign(
       { userId: result.user.id, email: result.user.email },
       JWT_SECRET,
@@ -105,7 +101,7 @@ app.post("/api/auth/register", async (req, res) => {
       restaurantSlug: result.restaurant.slug,
     });
   } catch (error) {
-    console.error("Błąd podczas rejestracji:", error);
+    console.error("Błąd rejestracji:", error);
     return res.status(500).json({ error: "Błąd serwera podczas rejestracji" });
   }
 });
@@ -114,7 +110,6 @@ app.post("/api/auth/register", async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await db.users.findUnique({
       where: { email },
       include: { restaurants: true },
@@ -130,7 +125,6 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     const firstRestaurant = user.restaurants[0];
-
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       JWT_SECRET,
@@ -141,7 +135,7 @@ app.post("/api/auth/login", async (req, res) => {
       success: true,
       token,
       user: { id: user.id, email: user.email },
-      restaurantSlug: firstRestaurant?.slug || "pizzeria-la-torre",
+      restaurantSlug: firstRestaurant?.slug || "",
     });
   } catch (error) {
     console.error("Błąd logowania:", error);
@@ -149,7 +143,7 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// 3. DANE DASHBOARDU (Rozpoznaje zalogowanego użytkownika po tokenie)
+// 3. DASHBOARD
 app.get("/api/dashboard", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -160,9 +154,7 @@ app.get("/api/dashboard", async (req, res) => {
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
         userId = decoded.userId;
-      } catch (e) {
-        // Token wygasł lub jest nieprawidłowy
-      }
+      } catch (e) {}
     }
 
     let userRestaurants = userId
@@ -172,32 +164,23 @@ app.get("/api/dashboard", async (req, res) => {
     let restaurant;
 
     if (userRestaurants.length > 0) {
-      // Wybieramy restaurację na podstawie parametru slug z query (lub pierwszą z listy)
       const requestedSlug = req.query.slug as string;
-      restaurant =
-        userRestaurants.find((r) => r.slug === requestedSlug) || userRestaurants[0];
+      restaurant = userRestaurants.find((r) => r.slug === requestedSlug) || userRestaurants[0];
 
-      // Dociągamy szczegóły wybranej restauracji (kody QR, zdarzenia)
       restaurant = await db.restaurants.findUnique({
         where: { id: restaurant.id },
         include: {
-          qr_codes: {
-            include: { analytics_events: true },
-          },
+          qr_codes: { include: { analytics_events: true } },
         },
       });
     } else {
-      // Domyślny fallback, gdy brak zalogowanego użytkownika
       restaurant = await db.restaurants.findFirst({
         include: {
-          qr_codes: {
-            include: { analytics_events: true },
-          },
+          qr_codes: { include: { analytics_events: true } },
         },
       });
     }
 
-    // Fallback: jeśli brak tokenu, pobierzmy pierwszą restaurację z bazy
     if (!restaurant) {
       return res.status(404).json({ error: "Nie znaleziono restauracji" });
     }
@@ -210,8 +193,6 @@ app.get("/api/dashboard", async (req, res) => {
 
     if (restaurant.subscription_status === "TRIAL" && trialEndsAt) {
       const diffTime = trialEndsAt.getTime() - now.getTime();
-      
-      // Jeśli czas do końca trialu minął (wartość ujemna lub 0) -> BLOKUJEMY
       if (diffTime <= 0) {
         trialDaysLeft = 0;
         isTrialExpired = true;
@@ -226,32 +207,23 @@ app.get("/api/dashboard", async (req, res) => {
     const allEvents = restaurant.qr_codes.flatMap((qr) => qr.analytics_events);
     const totalScans = allEvents.filter((e) => e.event_type === "SCAN").length;
     const totalClicks = allEvents.filter((e) => e.event_type === "CLICK").length;
-    const conversionRate =
-      totalScans > 0 ? ((totalClicks / totalScans) * 100).toFixed(1) : "0";
+    const conversionRate = totalScans > 0 ? ((totalClicks / totalScans) * 100).toFixed(1) : "0";
 
     const last14Days = Array.from({ length: 14 }).map((_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (13 - i));
       const dateStr = d.toISOString().split("T")[0];
-      const dayLabel = `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1)
-        .toString()
-        .padStart(2, "0")}`;
-
+      const dayLabel = `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}`;
       const scansOnDay = allEvents.filter(
-        (e) =>
-          e.event_type === "SCAN" &&
-          new Date(e.created_at).toISOString().split("T")[0] === dateStr
+        (e) => e.event_type === "SCAN" && new Date(e.created_at).toISOString().split("T")[0] === dateStr
       ).length;
-
       return { date: dayLabel, skany: scansOnDay, scans: scansOnDay };
     });
 
+    const APP_URL = process.env.APP_URL || "";
     const tablesData = restaurant.qr_codes.map((qr) => {
       const scans = qr.analytics_events.filter((e) => e.event_type === "SCAN").length;
       const clicks = qr.analytics_events.filter((e) => e.event_type === "CLICK").length;
-    
-    const APP_URL = process.env.APP_URL || "http://localhost:8080";
-
       return {
         id: qr.id,
         label: qr.label,
@@ -265,14 +237,13 @@ app.get("/api/dashboard", async (req, res) => {
 
     const nextBillingDate = restaurant.subscription_started_at
       ? new Date(new Date(restaurant.subscription_started_at).setMonth(new Date(restaurant.subscription_started_at).getMonth() + 1))
-      : null
+      : null;
 
     return res.json({
       restaurantName: restaurant.name,
       slug: restaurant.slug,
       logoUrl: restaurant.logo_url,
       googleReviewLink: restaurant.google_review_link,
-      // 👈 Przekazujemy listę tylko tych lokali, które należą do zalogowanego konta:
       userRestaurants: userRestaurants.map((r) => ({
         name: r.name,
         slug: r.slug,
@@ -295,54 +266,49 @@ app.get("/api/dashboard", async (req, res) => {
       tables: tablesData,
     });
   } catch (error) {
-    console.error("❌ Błąd serwera API:", error);
-    return res.status(500).json({ error: "Błąd serwera bazy danych" });
+    console.error("Błąd dashboardu:", error);
+    return res.status(500).json({ error: "Błąd bazy danych" });
   }
 });
 
-// AKTUALIZACJA LINKU GOOGLE
+// 4. AKTUALIZACJA GOOGLE LINK
 app.patch("/api/restaurant/:slug/google-link", async (req, res) => {
   try {
     const { slug } = req.params;
     const { googleReviewLink } = req.body;
-
     const updated = await db.restaurants.update({
       where: { slug },
       data: { google_review_link: googleReviewLink },
     });
-
     return res.json({ success: true, googleReviewLink: updated.google_review_link });
   } catch (error) {
-    console.error("Błąd podczas aktualizacji linku:", error);
-    return res.status(500).json({ error: "Błąd serwera przy zapisie linku" });
+    return res.status(500).json({ error: "Błąd serwera" });
   }
 });
 
-// REJESTRACJA SKANU QR
+// 5. AKTUALIZACJA LOGO
+app.patch("/api/restaurant/:slug/logo", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { logoUrl } = req.body;
+    const updated = await db.restaurants.update({
+      where: { slug },
+      data: { logo_url: logoUrl || null },
+    });
+    return res.json({ success: true, logoUrl: updated.logo_url });
+  } catch (error) {
+    return res.status(500).json({ error: "Błąd zapisu logo" });
+  }
+});
+
+// 6. SKAN KODU QR
 app.post("/api/scan/:codeIdentifier", async (req, res) => {
   try {
     const { codeIdentifier } = req.params;
-
     const qrCode = await db.qr_codes.findUnique({
       where: { code_identifier: codeIdentifier },
       include: { restaurant: true },
     });
-
-    const totalScans = await db.analytics_events.count({
-      where: {
-        qr_code: { restaurant_id: qrCode.restaurant_id },
-        event_type: "SCAN",
-      },
-    });
-
-    if ([25, 50, 100, 250, 500].includes(totalScans)) {
-      const owner = await db.users.findUnique({
-        where: { id: qrCode.restaurant.user_id },
-      });
-      if (owner?.email) {
-        sendMilestoneEmail(owner.email, qrCode.restaurant.name, totalScans).catch(console.error);
-      }
-    }
 
     if (!qrCode) {
       return res.status(404).json({ error: "Kod QR nie istnieje" });
@@ -356,6 +322,20 @@ app.post("/api/scan/:codeIdentifier", async (req, res) => {
       },
     });
 
+    const totalScans = await db.analytics_events.count({
+      where: {
+        qr_code: { restaurant_id: qrCode.restaurant_id },
+        event_type: "SCAN",
+      },
+    });
+
+    if ([25, 50, 100, 250, 500].includes(totalScans)) {
+      const owner = await db.users.findUnique({ where: { id: qrCode.restaurant.user_id } });
+      if (owner?.email) {
+        sendMilestoneEmail(owner.email, qrCode.restaurant.name, totalScans).catch(console.error);
+      }
+    }
+
     return res.json({
       qrCodeId: qrCode.id,
       restaurantName: qrCode.restaurant.name,
@@ -364,16 +344,14 @@ app.post("/api/scan/:codeIdentifier", async (req, res) => {
       googleReviewLink: qrCode.restaurant.google_review_link,
     });
   } catch (error) {
-    console.error("Błąd podczas rejestracji skanu:", error);
     return res.status(500).json({ error: "Błąd serwera" });
   }
 });
 
-// REJESTRACJA KLIKNIĘCIA
+// 7. KLIKNIĘCIE W OPINIE GOOGLE
 app.post("/api/click/:qrCodeId", async (req, res) => {
   try {
     const { qrCodeId } = req.params;
-
     await db.analytics_events.create({
       data: {
         qr_code_id: qrCodeId,
@@ -381,20 +359,16 @@ app.post("/api/click/:qrCodeId", async (req, res) => {
         user_agent: req.headers["user-agent"] || null,
       },
     });
-
     return res.json({ success: true });
   } catch (error) {
-    console.error("Błąd podczas rejestracji kliknięcia:", error);
     return res.status(500).json({ error: "Błąd serwera" });
   }
 });
-const PORT = process.env.PORT || 3001;
 
-// TWORZENIE NOWEGO STOLIKA / KODU QR
+// 8. DODAWANIE KODU QR
 app.post("/api/qr-codes", async (req, res) => {
   try {
     const { restaurantSlug, label } = req.body;
-
     if (!restaurantSlug || !label) {
       return res.status(400).json({ error: "Podaj nazwę stolika" });
     }
@@ -419,7 +393,7 @@ app.post("/api/qr-codes", async (req, res) => {
     }
 
     const codeIdentifier = `${restaurantSlug}-${slugify(label)}-${Date.now().toString().slice(-4)}`;
-    const APP_URL = process.env.APP_URL || "http://localhost:8080";
+    const APP_URL = process.env.APP_URL || "";
 
     const newQr = await db.qr_codes.create({
       data: {
@@ -442,55 +416,25 @@ app.post("/api/qr-codes", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Błąd podczas dodawania stolika:", error);
-    return res.status(500).json({ error: "Błąd serwera przy dodawaniu stolika" });
+    return res.status(500).json({ error: "Błąd serwera" });
   }
 });
 
-// USUWANIE STOLIKA / KODU QR
+// 9. USUWANIE KODU QR
 app.delete("/api/qr-codes/:id", async (req, res) => {
   try {
     const { id } = req.params;
-
-    await db.qr_codes.delete({
-      where: { id },
-    });
-
+    await db.qr_codes.delete({ where: { id } });
     return res.json({ success: true });
   } catch (error) {
-    console.error("Błąd podczas usuwania stolika:", error);
-    return res.status(500).json({ error: "Błąd serwera przy usuwaniu stolika" });
+    return res.status(500).json({ error: "Błąd usuwania stolika" });
   }
 });
 
-app.patch("/api/restaurant/:slug/logo", async (req, res) => {
-  try {
-    const { slug } = req.params;
-    const { logoUrl } = req.body;
-
-    const updated = await db.restaurants.update({
-      where: { slug },
-      data: { logo_url: logoUrl || null },
-    });
-
-    return res.json({ success: true, logoUrl: updated.logo_url });
-  } catch (error) {
-    console.error("Błąd podczas zapisu logo:", error);
-    return res.status(500).json({ error: "Błąd serwera przy zapisie logo" });
-  }
-});
-
-//Stripe webhook endpoint
-
-// TWORZENIE SESJI STRIPE CHECKOUT
+// 10. STRIPE CHECKOUT
 app.post("/api/stripe/create-checkout-session", async (req, res) => {
   try {
     const { restaurantSlug } = req.body;
-
-    if (!restaurantSlug) {
-      return res.status(400).json({ error: "Brak sluga restauracji" });
-    }
-
     const restaurant = await db.restaurants.findUnique({
       where: { slug: restaurantSlug },
       include: { user: true },
@@ -500,7 +444,8 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
       return res.status(404).json({ error: "Nie znaleziono restauracji" });
     }
 
-    // Tworzymy sesję Stripe dla subskrypcji Gastro Starter (99 PLN netto / msc)
+    const APP_URL = process.env.APP_URL || "https://dajopinie.pl";
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card", "blik"],
       mode: "subscription",
@@ -514,39 +459,26 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
               name: "DajOpinie — Pakiet Gastro Starter",
               description: `Miesięczna subskrypcja dla lokalu: ${restaurant.name}`,
             },
-            unit_amount: 9900, // 99.00 PLN
-            recurring: {
-              interval: "month",
-            },
+            unit_amount: 9900,
+            recurring: { interval: "month" },
           },
           quantity: 1,
         },
       ],
-      success_url: `http://localhost:8080/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `http://localhost:8080/dashboard?payment=cancelled`,
+      success_url: `${APP_URL}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${APP_URL}/dashboard?payment=cancelled`,
     });
 
     return res.json({ url: session.url });
   } catch (error: any) {
-    console.error("Błąd tworzenia sesji Stripe:", error);
-    return res.status(500).json({ error: error.message || "Błąd serwera Stripe" });
+    return res.status(500).json({ error: error.message || "Błąd Stripe" });
   }
 });
 
-// WERYFIKACJA UDANEJ PŁATNOŚCI I AKTUALIZACJA W BAZIE NEONDB
+// 11. STRIPE VERIFY
 app.post("/api/stripe/verify-session", async (req, res) => {
   try {
     const { sessionId, restaurantSlug } = req.body;
-
-    const restaurant = await db.restaurants.findUnique({
-      where: { slug: restaurantSlug },
-    });
-
-    if (!restaurant) {
-      return res.status(404).json({ error: "Nie znaleziono restauracji" });
-    }
-
-    // Aktualizujemy status na ACTIVE i zapisujemy datę startu subskrypcji
     const updated = await db.restaurants.update({
       where: { slug: restaurantSlug },
       data: {
@@ -554,50 +486,10 @@ app.post("/api/stripe/verify-session", async (req, res) => {
         subscription_started_at: new Date(),
       },
     });
-
     return res.json({ success: true, status: updated.subscription_status });
   } catch (error) {
-    console.error("Błąd weryfikacji sesji:", error);
     return res.status(500).json({ error: "Błąd bazy danych" });
   }
 });
 
-// SPRAWDZANIE WYGASAJĄCYCH TRIALÓW I WYSYŁKA PRZYPOMNIEŃ (3 DNI PRZED)
-app.post("/api/cron/check-expiring-trials", async (req, res) => {
-  try {
-    const now = new Date();
-    const in3Days = new Date();
-    in3Days.setDate(now.getDate() + 3);
-
-    const expiring = await db.restaurants.findMany({
-      where: {
-        subscription_status: "TRIAL",
-        trial_ends_at: {
-          gte: now,
-          lte: in3Days,
-        },
-      },
-      include: {
-        user: true,
-        qr_codes: { include: { analytics_events: true } },
-      },
-    });
-
-    for (const rest of expiring) {
-      if (rest.user?.email && rest.trial_ends_at) {
-        const diffDays = Math.max(1, Math.ceil((new Date(rest.trial_ends_at).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-        const totalScans = rest.qr_codes.flatMap((q) => q.analytics_events).filter((e) => e.event_type === "SCAN").length;
-
-        await sendTrialEndingEmail(rest.user.email, rest.name, diffDays, totalScans);
-      }
-    }
-
-    return res.json({ success: true, count: expiring.length });
-  } catch (error) {
-    console.error("Błąd zadania cron:", error);
-    return res.status(500).json({ error: "Błąd serwera" });
-  }
-});
-
-app.listen(PORT, () => console.log(`🚀 API Express nasłuchuje na porcie ${PORT}`));
-
+export default app;

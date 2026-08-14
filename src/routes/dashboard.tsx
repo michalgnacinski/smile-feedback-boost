@@ -9,8 +9,8 @@ import {
   LogOut,
   Menu,
   QrCode,
-  X,
   Store,
+  X,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,7 @@ import { GoogleLinkCard } from "@/components/dashboard/GoogleLinkCard";
 import { QrTables } from "@/components/dashboard/QrTables";
 import { getRestaurantDashboardData } from "@/lib/services/dashboard";
 import { LogoUploadCard } from "@/components/dashboard/LogoUploadCard";
+import { TrialExpiredPaywall } from "@/components/dashboard/TrialExpiredPaywall";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -37,6 +38,8 @@ export const Route = createFileRoute("/dashboard")({
   }),
   component: Dashboard,
 });
+
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/5kQ5kD12h8pm8eE17c3Je00";
 
 const nav = [
   { id: "overview", label: "Panel Analityczny", icon: LayoutDashboard },
@@ -71,13 +74,36 @@ export function Dashboard() {
     fetchData(activeSlug);
   }, [activeSlug]);
 
+  // Sprawdzanie czy wróciliśmy z udanej płatności Stripe
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const sessionId = params.get("session_id");
+
+    if (payment === "success" && dashboardData?.slug) {
+      fetch("/api/stripe/verify-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          restaurantSlug: dashboardData.slug,
+        }),
+      })
+        .then((r) => r.json())
+        .then(() => {
+          window.history.replaceState({}, document.title, window.location.pathname);
+          fetchData(activeSlug);
+        });
+    }
+  }, [dashboardData?.slug]);
+
   const handleLogout = () => {
     localStorage.removeItem("dajopinie_token");
     window.location.href = "/";
   };
 
   const scrollToGoogleCard = () => {
-    setView("overview");
+    setView("google");
     setTimeout(() => {
       const element = document.getElementById("google-link-card");
       if (element) {
@@ -157,7 +183,7 @@ export function Dashboard() {
           })}
         </nav>
 
-        {/* PRZYCISK WYLOGUJ NA DESKTOP (PRZYPIĘTY NA DOLE) */}
+        {/* PRZYCISK WYLOGUJ NA DESKTOP */}
         <div className="p-4 border-t border-border mt-auto">
           <Button
             variant="ghost"
@@ -170,7 +196,7 @@ export function Dashboard() {
         </div>
       </aside>
 
-      {/* GŁÓWNA KONTENERA DANYCH */}
+      {/* GŁÓWNY KONTENER */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* NAGŁÓWEK MOBILNY */}
         <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
@@ -237,7 +263,6 @@ export function Dashboard() {
               })}
             </nav>
 
-            {/* WYLOGUJ W MENU MOBILNYM */}
             <div className="mt-4 pt-3 border-t border-border">
               <Button
                 variant="ghost"
@@ -256,7 +281,7 @@ export function Dashboard() {
           {/* NAGŁÓWEK DANEGO WIDOKU */}
           <div className="mb-8 sm:mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
             <div className="flex items-center gap-4">
-              {/* POWIĘKSZONE LOGO / AVATAR LOKALU (56px) */}
+              {/* POWIĘKSZONE LOGO (56px) */}
               <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl border border-border bg-slate-900/90 p-2 shadow-md shrink-0 ring-1 ring-white/10">
                 {dashboardData?.logoUrl ? (
                   <img
@@ -269,7 +294,6 @@ export function Dashboard() {
                 )}
               </div>
 
-              {/* WYRAŹNY TYTUŁ I SUBSCRIPT LOGO */}
               <div className="space-y-0.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
                   {dashboardData?.restaurantName || "DajOpinie"}
@@ -280,117 +304,139 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* BADGE SUBSKRYPCJI W JEDNEJ LINII */}
             <Badge className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 font-semibold text-xs px-3 py-1.5 rounded-lg w-fit shrink-0">
               {dashboardData?.subscription?.status === "TRIAL"
                 ? `Okres próbny (zostało ${dashboardData?.subscription?.trialDaysLeft ?? 0} dni)`
                 : "Subskrypcja aktywna"}
             </Badge>
           </div>
-          
 
-          {/* WIDOK: PRZEGLĄD */}
-          {view === "overview" && (
-            <div className="space-y-6">
-              {!dashboardData?.googleReviewLink && (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
-                      <AlertTriangle className="size-5" />
+          {/* JEŚLI TRIAL WYGASŁ I BRAK SUBSKRYPCJI — WYŚWIETL PAYWALL */}
+          {dashboardData?.subscription?.isExpired && dashboardData?.subscription?.status !== "ACTIVE" ? (
+            <TrialExpiredPaywall
+              restaurantName={dashboardData?.restaurantName}
+              totalScans={dashboardData?.stats?.totalScans || 0}
+              onActivate={() => {
+                window.location.href = STRIPE_PAYMENT_LINK;
+              }}
+            />
+          ) : (
+            <>
+              {/* WIDOK: PANEL ANALITYCZNY */}
+              {view === "overview" && (
+                <div className="space-y-6">
+                  {!dashboardData?.googleReviewLink && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+                          <AlertTriangle className="size-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs sm:text-sm text-white">
+                            Brak skonfigurowanego linku Google Maps!
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-amber-200/80">
+                            Twój system QR nie może przekierowywać gości, dopóki nie wkleisz linku do profilu firmy.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={scrollToGoogleCard}
+                        className="bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold text-xs shrink-0 glow-gold"
+                      >
+                        Uzupełnij link teraz →
+                      </Button>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-xs sm:text-sm text-white">
-                        Brak skonfigurowanego linku Google Maps!
-                      </h4>
-                      <p className="text-[11px] sm:text-xs text-amber-200/80">
-                        Twój system QR nie może przekierowywać gości, dopóki nie wkleisz linku do profilu firmy.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={scrollToGoogleCard}
-                    className="bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold text-xs shrink-0 glow-gold"
-                  >
-                    Uzupełnij link teraz →
-                  </Button>
+                  )}
+
+                  <Overview stats={dashboardData?.stats} chartData={dashboardData?.chartData} />
                 </div>
               )}
 
-              <Overview stats={dashboardData?.stats} chartData={dashboardData?.chartData} />
+              {/* WIDOK: KODY QR I STOLIKI */}
+              {view === "tables" && (
+                <QrTables
+                  restaurantName={dashboardData?.restaurantName}
+                  restaurantSlug={dashboardData?.slug}
+                  logoUrl={dashboardData?.logoUrl || null}
+                  tables={dashboardData?.tables || []}
+                  onRefresh={() => fetchData(activeSlug)}
+                />
+              )}
 
-              <GoogleLinkCard
-                slug={dashboardData?.slug || ""}
-                initialLink={dashboardData?.googleReviewLink || null}
-                isHighlighted={!dashboardData?.googleReviewLink}
-              />
-            </div>
-          )}
+              {/* WIDOK: PROFIL I GOOGLE LINK */}
+              {view === "google" && (
+                <div className="max-w-2xl space-y-6">
+                  <LogoUploadCard
+                    slug={dashboardData?.slug || ""}
+                    restaurantName={dashboardData?.restaurantName || ""}
+                    initialLogoUrl={dashboardData?.logoUrl || null}
+                    onSuccess={() => fetchData(activeSlug)}
+                  />
 
-          {/* WIDOK: KODY QR I STOLIKI */}
-          {view === "tables" && (
-            <QrTables
-              restaurantName={dashboardData?.restaurantName}
-              restaurantSlug={dashboardData?.slug}
-              tables={dashboardData?.tables || []}
-              onRefresh={() => fetchData(activeSlug)}
-            />
-          )}
-
-          {/* WIDOK: USTAWIENIA GOOGLE LINK */}
-          {view === "google" && (
-            <div className="max-w-2xl space-y-6">
-              {/* KARTA LOGO RESTAURACJI */}
-              <LogoUploadCard
-                slug={dashboardData?.slug || ""}
-                restaurantName={dashboardData?.restaurantName || ""}
-                initialLogoUrl={dashboardData?.logoUrl || null}
-                onSuccess={() => fetchData(activeSlug)}
-              />
-
-              {/* KARTA LINKU GOOGLE MAPS */}
-              <GoogleLinkCard
-                slug={dashboardData?.slug || ""}
-                initialLink={dashboardData?.googleReviewLink || null}
-                isHighlighted={!dashboardData?.googleReviewLink}
-              />
-            </div>
-          )}
-
-          {/* WIDOK: PŁATNOŚCI */}
-          {view === "billing" && (
-            <Card className="border-border bg-card max-w-xl">
-              <CardHeader>
-                <CardTitle className="text-base">Płatności i subskrypcja</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-xs sm:text-sm">
-                <div className="flex items-center justify-between border-b border-border pb-3">
-                  <span className="text-muted-foreground">Plan</span>
-                  <span className="font-semibold">Gastro Starter — 99 PLN netto / msc</span>
+                  <div id="google-link-card">
+                    <GoogleLinkCard
+                      slug={dashboardData?.slug || ""}
+                      initialLink={dashboardData?.googleReviewLink || null}
+                      isHighlighted={!dashboardData?.googleReviewLink}
+                    />
+                  </div>
                 </div>
+              )}
 
-                <div className="flex items-center justify-between border-b border-border pb-3">
-                  <span className="text-muted-foreground">Status</span>
-                  <Badge className="bg-primary text-primary-foreground font-semibold text-xs">
-                    {dashboardData?.subscription?.status === "TRIAL"
-                      ? `Okres próbny (zostało ${dashboardData?.subscription?.trialDaysLeft ?? 0} dni)`
-                      : "Aktywna subskrypcja"}
-                  </Badge>
-                </div>
+              {/* WIDOK: PŁATNOŚCI */}
+              {view === "billing" && (
+                <Card className="border-border bg-card max-w-xl">
+                  <CardHeader>
+                    <CardTitle className="text-base">Płatności i subskrypcja</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-xs sm:text-sm">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                      <span className="text-muted-foreground">Plan</span>
+                      <span className="font-semibold">Gastro Starter — 99 PLN netto / msc</span>
+                    </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Pierwsze obciążenie</span>
-                  <span className="font-semibold">
-                    {dashboardData?.subscription?.trialEndsAt
-                      ? new Date(dashboardData.subscription.trialEndsAt).toLocaleDateString("pl-PL")
-                      : "—"}
-                  </span>
-                </div>
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge className="bg-primary text-primary-foreground font-semibold text-xs">
+                        {dashboardData?.subscription?.status === "TRIAL"
+                          ? `Okres próbny (zostało ${dashboardData?.subscription?.trialDaysLeft ?? 0} dni)`
+                          : "Aktywna subskrypcja"}
+                      </Badge>
+                    </div>
 
-                <Button className="mt-2 font-bold w-full sm:w-auto glow-gold">
-                  Dodaj metodę płatności
-                </Button>
-              </CardContent>
-            </Card>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        {dashboardData?.subscription?.status === "ACTIVE"
+                          ? "Kolejne odnowienie"
+                          : "Pierwsze obciążenie (koniec trialu)"}
+                      </span>
+                      <span className="font-semibold font-mono">
+                        {dashboardData?.subscription?.status === "ACTIVE"
+                          ? dashboardData?.subscription?.nextBillingAt
+                            ? new Date(dashboardData.subscription.nextBillingAt).toLocaleDateString("pl-PL")
+                            : "Za 1 miesiąc"
+                          : dashboardData?.subscription?.trialEndsAt
+                            ? new Date(dashboardData.subscription.trialEndsAt).toLocaleDateString("pl-PL")
+                            : "—"}
+                      </span>
+                    </div>
+
+                    <Button
+                      onClick={() => {
+                        window.location.href = STRIPE_PAYMENT_LINK;
+                      }}
+                      disabled={dashboardData?.subscription?.status === "ACTIVE"}
+                      className="mt-2 font-bold w-full sm:w-auto glow-gold"
+                    >
+                      {dashboardData?.subscription?.status === "ACTIVE"
+                        ? "Subskrypcja aktywna"
+                        : "Aktywuj subskrypcję (99 PLN / msc)"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </main>
       </div>

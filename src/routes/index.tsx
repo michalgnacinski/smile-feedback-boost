@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ArrowRight, LayoutDashboard } from "lucide-react";
+import { useState } from "react";
 import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
 import { Comparison, Faq, Footer, Pricing, Steps, faq } from "@/components/landing/Sections";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { Button } from "@/components/ui/button";
 
 const SITE_URL = "https://dajopinie.com.pl";
 const title = "Więcej opinii Google dla restauracji | DajOpinie";
@@ -43,23 +41,12 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Sprawdzenie stanu logowania w przeglądarce
-  useEffect(() => {
-    const token = localStorage.getItem("dajopinie_token");
-    if (token) {
-      setIsLoggedIn(true);
-    }
-  }, []);
-
-  // Otwiera modal w trybie Rejestracji (14 dni testu)
   const openRegister = () => {
     setAuthMode("register");
     setAuthOpen(true);
   };
 
-  // Otwiera modal w trybie Logowania
   const openLogin = () => {
     setAuthMode("login");
     setAuthOpen(true);
@@ -67,25 +54,6 @@ function Index() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* 🚀 BANEREK DLA ZALOGOWANEGO UŻYTKOWNIKA */}
-      {isLoggedIn && (
-        <div className="bg-primary/10 border-b border-primary/20 px-4 py-2.5 text-xs sm:text-sm flex items-center justify-between z-50 sticky top-0 backdrop-blur-md">
-          <div className="flex items-center gap-2 text-primary font-semibold truncate">
-            <LayoutDashboard className="size-4 shrink-0" />
-            <span className="truncate">Jesteś zalogowany do panelu lokalu</span>
-          </div>
-          <Button
-            size="sm"
-            className="h-7 text-xs font-bold gap-1 glow-gold shrink-0"
-            onClick={() => {
-              window.location.href = "/dashboard";
-            }}
-          >
-            Otwórz panel <ArrowRight className="size-3.5" />
-          </Button>
-        </div>
-      )}
-
       <Header onTrial={openRegister} onLogin={openLogin} />
       <Hero onTrial={openRegister} />
       <Steps />
@@ -94,7 +62,6 @@ function Index() {
       <Faq />
       <Footer />
 
-      {/* JEDYNY GŁÓWNY MODAL OBSŁUGUJĄCY LOGOWANIE I REJESTRACJĘ */}
       <AuthModal
         open={authOpen}
         onOpenChange={setAuthOpen}

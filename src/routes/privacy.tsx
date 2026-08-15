@@ -53,12 +53,12 @@ export function PrivacyPage() {
             </li>
             <li>
               Operatorem serwisu oraz Administratorem danych osobowych jest:{" "}
-              <strong className="text-foreground">DajOpinie, os. Zwycięstwa, 61-650 Poznań</strong>.
+              <strong className="text-foreground">DajOpinie, Poznań</strong>.
             </li>
             <li>
               Adres kontaktowy poczty elektronicznej operatora:{" "}
-              <a href="mailto:michal.gnacinski2006@gmail.com" className="text-primary hover:underline font-medium">
-                michal.gnacinski2006@gmail.com
+              <a href="mailto:kontakt.dajopinie@gmail.com" className="text-primary hover:underline font-medium">
+                kontakt.dajopinie@gmail.com
               </a>.
             </li>
             <li>

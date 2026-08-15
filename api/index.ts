@@ -678,8 +678,12 @@ app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
     const data = await response.json();
 
     if (data.status !== "OK") {
-      console.error("Błąd Google API:", data);
-      return res.status(400).json({ error: "Nie udało się pobrać danych z Google Maps" });
+      console.error("Szczegóły błędu Google API:", data);
+      return res.status(400).json({ 
+        error: "Nie udało się pobrać danych z Google Maps",
+        googleStatus: data.status,
+        googleErrorMessage: data.error_message || "Brak szczegółowego komunikatu"
+      });
     }
 
     const result = data.result;

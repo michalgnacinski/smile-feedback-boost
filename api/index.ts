@@ -642,6 +642,22 @@ app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
       return res.status(404).json({ error: "Nie znaleziono lokalu" });
     }
 
+    function extractPlaceId(link: string | null): string | null {
+      if (!link) return null;
+      try {
+        const url = new URL(link);
+        const fromParam = url.searchParams.get("placeid");
+        if (fromParam) return fromParam;
+
+        // Fallback dla linków zawierających ChIJ bezpośrednio w ścieżce
+        const match = link.match(/(ChIJ[a-zA-Z0-9_-]+)/);
+        return match ? match[1] : null;
+      } catch {
+        const match = link.match(/(ChIJ[a-zA-Z0-9_-]+)/);
+        return match ? match[1] : null;
+      }
+    }
+
     const placeId = restaurant.google_place_id || extractPlaceId(restaurant.google_review_link);
 
     if (!placeId) {

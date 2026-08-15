@@ -624,4 +624,83 @@ app.post("/api/restaurants", async (req, res) => {
   }
 });
 
+// Helper do wyciągania Place ID z linku (jeśli link to https://search.google.com/local/writereview?placeid=XYZ)
+function extractPlaceId(link: string | null): string | null {
+  if (!link) return null;
+  try {
+    const url = new URL(link);
+    return url.searchParams.get("placeid") || null;
+  } catch {
+    return null;
+  }
+}
+
+// ENDPOINT: POBIERANIE OPINII Z GOOGLE PLACES API
+app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const restaurant = await db.restaurants.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        google_place_id: true,
+        google_review_link: true,
+      },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ error: "Nie znaleziono lokalu" });
+    }
+
+    // Jeśli place_id nie jest wpisany ręcznie, spróbuj wyciągnąć go z zapisanego google_review_link
+    const placeId = restaurant.google_place_id || extractPlaceId(restaurant.google_review_link);
+
+    if (!placeId) {
+      return res.json({
+        hasPlaceId: false,
+        rating: null,
+        totalReviews: 0,
+        reviews: [],
+      });
+    }
+
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "Brak skonfigurowanego klucza GOOGLE_PLACES_API_KEY" });
+    }
+
+    // Zapytanie do Google Places API (Place Details)
+    const fields = "rating,user_ratings_total,reviews,name";
+    const googleUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&language=pl&key=${apiKey}`;
+
+    const response = await fetch(googleUrl);
+    const data = await response.json();
+
+    if (data.status !== "OK") {
+      console.error("Błąd Google API:", data);
+      return res.status(400).json({ error: "Nie udało się pobrać danych z Google Maps" });
+    }
+
+    const result = data.result;
+
+    return res.json({
+      hasPlaceId: true,
+      rating: result.rating || 0,
+      totalReviews: result.user_ratings_total || 0,
+      reviews: (result.reviews || []).map((rev: any) => ({
+        authorName: rev.author_name,
+        authorPhoto: rev.profile_photo_url,
+        rating: rev.rating,
+        text: rev.text,
+        relativeTime: rev.relative_time_description,
+        time: rev.time,
+      })),
+    });
+  } catch (error) {
+    console.error("Błąd pobierania opinii Google:", error);
+    return res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
 export default app;

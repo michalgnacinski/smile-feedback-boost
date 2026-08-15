@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
+import { GoogleReviewsWidget } from "./GoogleReviewsWidget";
 
 interface OverviewProps {
   stats?: {
@@ -119,6 +120,8 @@ export function Overview({ stats, chartData = [] }: OverviewProps) {
           </div>
         </CardContent>
       </Card>
+      
+      
     </div>
   );
 }

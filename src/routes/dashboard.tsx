@@ -45,6 +45,7 @@ import { QrTables } from "@/components/dashboard/QrTables";
 import { getRestaurantDashboardData } from "@/lib/services/dashboard";
 import { LogoUploadCard } from "@/components/dashboard/LogoUploadCard";
 import { TrialExpiredPaywall } from "@/components/dashboard/TrialExpiredPaywall";
+import { GoogleReviewsWidget } from "@/components/dashboard/GoogleReviewsWidget";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -440,6 +441,11 @@ export function Dashboard() {
                   )}
 
                   <Overview stats={dashboardData?.stats} chartData={dashboardData?.chartData} />
+
+                  <GoogleReviewsWidget
+                    slug={dashboardData?.slug || ""}
+                    googleReviewLink={dashboardData?.googleReviewLink}
+                  />
                 </div>
               )}
 

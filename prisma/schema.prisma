@@ -46,6 +46,9 @@ model restaurants {
   slug                    String             @unique @db.VarChar(255)
   logo_url                String?            @db.Text
   google_review_link      String?            @db.Text
+  google_place_id         String?            @db.VarChar(255) // 👈 DODAJEMY TO POLE
+  google_rating           Float?             // Opcjonalnie: cache średniej (np. 4.8)
+  google_reviews_count    Int?               // Opcjonalnie:
   is_active               Boolean            @default(true)
   
   subscription_status     String             @default("TRIAL")
@@ -60,4 +63,5 @@ model restaurants {
   qr_codes                qr_codes[]
 
   @@index([slug], map: "idx_restaurants_slug")
+  @@index([user_id], map: "idx_restaurants_user_id")
 }

@@ -186,6 +186,18 @@ export function AuthModal({
               "Zaloguj się"
             )}
           </Button>
+          {mode === "register" && (
+            <p className="text-[11px] text-center text-muted-foreground mt-2">
+              Rejestrując się, akceptujesz nasz{" "}
+              <a href="/terms" target="_blank" rel="noreferrer" className="text-foreground underline hover:text-primary">
+                Regulamin
+              </a>{" "}
+              oraz{" "}
+              <a href="/privacy" target="_blank" rel="noreferrer" className="text-foreground underline hover:text-primary">
+                Politykę Prywatności
+              </a>.
+            </p>
+          )}
         </form>
 
         <div className="text-center pt-3 border-t border-border mt-2 text-xs text-muted-foreground">

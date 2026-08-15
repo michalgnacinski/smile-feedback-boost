@@ -226,10 +226,10 @@ export function Footer() {
           <p>© {new Date().getFullYear()} DajOpinie.pl — Wszelkie prawa zastrzeżone.</p>
         </div>
         <div className="flex flex-wrap gap-5">
-          <a href="#" className="hover:text-foreground transition-colors">
+          <a href="/privacy" className="hover:text-foreground transition-colors">
             Polityka prywatności
           </a>
-          <a href="#" className="hover:text-foreground transition-colors">
+          <a href="/terms" className="hover:text-foreground transition-colors">
             Regulamin
           </a>
         </div>

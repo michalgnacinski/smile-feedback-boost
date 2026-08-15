@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Star, MessageSquare, ExternalLink, Award } from "lucide-react";
+import { Star, MessageSquare, ExternalLink, Award, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -119,17 +119,14 @@ export function GoogleReviewsWidget({ slug, googleReviewLink }: Props) {
                 className="p-3 rounded-lg bg-background/50 border border-border/60 space-y-2 text-xs"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {rev.authorPhoto ? (
-                      <img src={rev.authorPhoto} alt="" className="size-5 rounded-full" />
-                    ) : (
-                      <div className="size-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">
-                        {rev.authorName.charAt(0)}
-                      </div>
-                    )}
-                    <span className="font-semibold text-foreground">{rev.authorName}</span>
-                  </div>
-                  <span className="text-[11px] text-muted-foreground">{rev.relativeTime}</span>
+                    <div className="flex items-center gap-2.5">
+                        {/* Elegancki avatar z pierwszą literą lub ikoną */}
+                        <div className="size-7 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold shrink-0">
+                        {rev.authorName ? rev.authorName.charAt(0).toUpperCase() : <User className="size-3.5" />}
+                        </div>
+                        <span className="font-semibold text-foreground text-xs sm:text-sm">{rev.authorName}</span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{rev.relativeTime}</span>
                 </div>
 
                 <div className="flex text-amber-400">

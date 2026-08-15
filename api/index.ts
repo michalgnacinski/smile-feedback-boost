@@ -699,14 +699,17 @@ app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
 
     // Bezpieczne mapowanie recenzji z fallbackami
     const rawReviews = Array.isArray(data.reviews) ? data.reviews : [];
-    const reviews = rawReviews.map((rev: any) => ({
-      authorName: rev.authorAttribution?.displayName || "Gość lokalu",
-      authorPhoto: rev.authorAttribution?.photoUri || null,
-      rating: rev.rating || 5,
-      text: rev.text?.text || rev.originalText?.text || "",
-      relativeTime: rev.relativePublishTimeDescription || "Niedawno",
-      publishTime: rev.publishTime || null,
-    }));
+
+    const reviews = rawReviews
+      .map((rev: any) => ({
+        authorName: rev.authorAttribution?.displayName || "Gość lokalu",
+        rating: rev.rating || 5,
+        text: rev.text?.text || rev.originalText?.text || "",
+        relativeTime: rev.relativePublishTimeDescription || "Niedawno",
+        publishTime: rev.publishTime ? new Date(rev.publishTime).getTime() : 0,
+      }))
+      // Sortujemy od najnowszych
+      .sort((a: any, b: any) => b.publishTime - a.publishTime);
 
     return res.json({
       hasPlaceId: true,

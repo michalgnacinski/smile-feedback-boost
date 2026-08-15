@@ -72,7 +72,9 @@ export function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const [activeSlug, setActiveSlug] = useState<string | null>(() => {
+    return localStorage.getItem("dajopinie_active_slug") || null;
+  });
   const [dashboardData, setDashboardData] = useState<any>(null);
 
   // Stan modala tworzenia nowej restauracji
@@ -80,23 +82,48 @@ export function Dashboard() {
   const [newRestaurantName, setNewRestaurantName] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const fetchData = (slug?: string | null) => {
-    setLoading(true);
+  const fetchData = (slug?: string | null, isSilent = false) => {
+    if (!isSilent) setLoading(true);
     getRestaurantDashboardData({ data: slug || undefined })
       .then((res) => {
         setDashboardData(res);
-        setLoading(false);
+        // Zapisujemy aktywny slug w localStorage
+        if (res?.slug) {
+          localStorage.setItem("dajopinie_active_slug", res.slug);
+          if (!activeSlug) {
+            setActiveSlug(res.slug);
+          }
+        }
+        if (!isSilent) setLoading(false);
       })
       .catch((err) => {
         console.error(err);
-        setError("Błąd pobierania danych");
-        setLoading(false);
+        if (!isSilent) {
+          setError("Błąd pobierania danych");
+          setLoading(false);
+        }
       });
   };
 
   useEffect(() => {
-    fetchData(activeSlug);
+    fetchData(activeSlug, false);
   }, [activeSlug]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Jeśli użytkownik jest w innej karcie przeglądarki, nie obciążamy serwera
+      if (document.hidden) return;
+      fetchData(activeSlug, true);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [activeSlug]);
+
+  // Pomocnik do zmiany lokalu
+  const handleSelectRestaurant = (slug: string) => {
+    localStorage.setItem("dajopinie_active_slug", slug);
+    setActiveSlug(slug);
+  };
 
   // Sprawdzanie czy wróciliśmy z udanej płatności Stripe
   useEffect(() => {
@@ -154,8 +181,8 @@ export function Dashboard() {
       setNewRestaurantName("");
       setCreateModalOpen(false);
 
-      // Przełączamy na nowy slug i pobieramy dane
-      setActiveSlug(data.slug);
+      // 👇 Zapisujemy i przełączamy na nowo utworzony lokal:
+      handleSelectRestaurant(data.slug);
     } catch (err: any) {
       toast.error(err.message || "Nie udało się utworzyć lokalu.");
     } finally {
@@ -207,7 +234,7 @@ export function Dashboard() {
                 dashboardData.userRestaurants.map((rest: { name: string; slug: string }) => (
                   <DropdownMenuItem
                     key={rest.slug}
-                    onSelect={() => setActiveSlug(rest.slug)}
+                    onSelect={() => handleSelectRestaurant(rest.slug)}
                     className="text-xs cursor-pointer"
                   >
                     {rest.name}
@@ -307,7 +334,7 @@ export function Dashboard() {
                     <DropdownMenuItem
                       key={rest.slug}
                       onSelect={() => {
-                        setActiveSlug(rest.slug);
+                        handleSelectRestaurant(rest.slug);
                         setMobileMenuOpen(false);
                       }}
                       className="text-xs"

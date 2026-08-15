@@ -34,7 +34,6 @@ export function AuthModal({
 
   const navigate = useNavigate();
 
-  // 👈 KLUCZOWA POPRAWKA: Synchronizacja trybu po kliknięciu "Zaloguj się" vs "Wypróbuj 14 dni"
   useEffect(() => {
     if (open) {
       setMode(initialMode);
@@ -89,13 +88,13 @@ export function AuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-center">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-2xl bg-card border border-border p-5 sm:p-6 shadow-2xl overflow-hidden">
+        <DialogHeader className="space-y-1.5 text-left pr-6">
+          <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
             {mode === "register" ? (
               <>
                 Wypróbuj{" "}
-                <span className="text-primary font-extrabold drop-shadow-[0_0_10px_rgba(245,158,11,0.6)]">
+                <span className="text-primary font-black drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
                   DajOpinie
                 </span>{" "}
                 14 dni za darmo
@@ -103,46 +102,46 @@ export function AuthModal({
             ) : (
               <>
                 Zaloguj się do{" "}
-                <span className="text-primary font-extrabold drop-shadow-[0_0_10px_rgba(245,158,11,0.6)]">
+                <span className="text-primary font-black drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
                   DajOpinie
                 </span>
               </>
             )}
           </DialogTitle>
-          <DialogDescription className="text-center text-xs">
+          <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
             {mode === "register"
               ? "Bez podawania karty kredytowej. Konfiguracja w 60 sekund."
               : "Wpisz swoje dane, aby przejść do panelu menadżera."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+        <form onSubmit={handleSubmit} className="space-y-3.5 pt-2">
           {mode === "register" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="restaurantName" className="text-xs">
+            <div className="space-y-1">
+              <Label htmlFor="restaurantName" className="text-xs font-medium text-foreground">
                 Nazwa Twojej Restauracji / Lokalu
               </Label>
-              <div className="relative">
-                <Store className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+              <div className="relative flex items-center">
+                <Store className="absolute left-3 size-4 text-muted-foreground pointer-events-none" />
                 <Input
                   id="restaurantName"
                   required
                   value={restaurantName}
                   onChange={(e) => setRestaurantName(e.target.value)}
                   placeholder="np. Pizzeria La Torre"
-                  className="pl-9 text-sm"
+                  className="pl-9 text-xs sm:text-sm h-10 w-full bg-background/50"
                   autoFocus
                 />
               </div>
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-xs">
+          <div className="space-y-1">
+            <Label htmlFor="email" className="text-xs font-medium text-foreground">
               Adres E-mail
             </Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+            <div className="relative flex items-center">
+              <Mail className="absolute left-3 size-4 text-muted-foreground pointer-events-none" />
               <Input
                 id="email"
                 type="email"
@@ -150,18 +149,18 @@ export function AuthModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="wlasciciel@restauracja.pl"
-                className="pl-9 text-sm"
+                className="pl-9 text-xs sm:text-sm h-10 w-full bg-background/50"
                 autoFocus={mode === "login"}
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-xs">
+          <div className="space-y-1">
+            <Label htmlFor="password" className="text-xs font-medium text-foreground">
               Hasło
             </Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+            <div className="relative flex items-center">
+              <Lock className="absolute left-3 size-4 text-muted-foreground pointer-events-none" />
               <Input
                 id="password"
                 type="password"
@@ -169,7 +168,7 @@ export function AuthModal({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-9 text-sm"
+                className="pl-9 text-xs sm:text-sm h-10 w-full bg-background/50"
               />
             </div>
           </div>
@@ -177,10 +176,10 @@ export function AuthModal({
           <Button
             type="submit"
             disabled={loading}
-            className="w-full font-bold h-11 glow-gold mt-2"
+            className="w-full font-bold h-10 sm:h-11 text-xs sm:text-sm glow-gold mt-2 transition-all"
           >
             {loading ? (
-              <Loader2 className="size-5 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : mode === "register" ? (
               "Rozpocznij darmowy test"
             ) : (
@@ -189,14 +188,14 @@ export function AuthModal({
           </Button>
         </form>
 
-        <div className="text-center pt-2 border-t border-border mt-3 text-xs text-muted-foreground">
+        <div className="text-center pt-3 border-t border-border mt-2 text-xs text-muted-foreground">
           {mode === "register" ? (
             <p>
               Masz już konto?{" "}
               <button
                 type="button"
                 onClick={() => setMode("login")}
-                className="text-primary font-semibold hover:underline"
+                className="text-primary font-bold hover:underline ml-1"
               >
                 Zaloguj się
               </button>
@@ -207,7 +206,7 @@ export function AuthModal({
               <button
                 type="button"
                 onClick={() => setMode("register")}
-                className="text-primary font-semibold hover:underline"
+                className="text-primary font-bold hover:underline ml-1"
               >
                 Załóż konto i przetestuj 14 dni
               </button>

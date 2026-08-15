@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { useEffect, useState } from "react";
+import { LayoutDashboard, ArrowRight, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 
 interface HeaderProps {
   onTrial: () => void;
@@ -27,8 +27,33 @@ export function Header({ onTrial, onLogin }: HeaderProps) {
     onTrial();
   };
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Sprawdzamy obecność tokena w przeglądarce
+    const token = localStorage.getItem("dajopinie_token");
+    if (token) {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur transition-all duration-300 animate-in fade-in slide-in-from-top-4">
+      {isLoggedIn && (
+        <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-between z-50 sticky top-0 backdrop-blur-md">
+          <div className="flex items-center gap-2 text-primary font-semibold">
+            <LayoutDashboard className="size-4 shrink-0" />
+            <span>Jesteś zalogowany do panelu lokalu</span>
+          </div>
+          <Button
+            size="sm"
+            className="h-7 text-xs font-bold gap-1 glow-gold"
+            onClick={() => (window.location.href = "/dashboard")}
+          >
+            Otwórz panel <ArrowRight className="size-3.5" />
+          </Button>
+        </div>
+      )}
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Logo />
 

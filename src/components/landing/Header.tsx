@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { LayoutDashboard, ArrowRight, Menu, X } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, LayoutDashboard, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 
@@ -16,14 +16,14 @@ const links = [
 
 export function Header({ onTrial, onLogin }: HeaderProps) {
   const [open, setOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem("dajopinie_token");
-    if (token) {
-      setIsLoggedIn(true);
+  // 👇 Natychmiastowy (synchroniczny) odczyt tokena przy montowaniu komponentu
+  const [isLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return Boolean(localStorage.getItem("dajopinie_token"));
     }
-  }, []);
+    return false;
+  });
 
   const handleLoginClick = () => {
     setOpen(false);
@@ -37,23 +37,6 @@ export function Header({ onTrial, onLogin }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-      {/* 🚀 STATYCZNY BANER DLA ZALOGOWANEGO UŻYTKOWNIKA */}
-      {isLoggedIn && (
-        <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-between">
-          <div className="flex items-center gap-2 text-primary font-semibold truncate pr-2">
-            <LayoutDashboard className="size-4 shrink-0" />
-            <span className="truncate">Jesteś zalogowany do panelu</span>
-          </div>
-          <Button
-            size="sm"
-            className="h-7 text-xs font-bold gap-1 glow-gold shrink-0"
-            onClick={() => (window.location.href = "/dashboard")}
-          >
-            Otwórz panel <ArrowRight className="size-3.5" />
-          </Button>
-        </div>
-      )}
-
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Logo />
 
@@ -74,10 +57,14 @@ export function Header({ onTrial, onLogin }: HeaderProps) {
         <div className="hidden items-center gap-2 md:flex">
           {isLoggedIn ? (
             <Button
-              onClick={() => (window.location.href = "/dashboard")}
-              className="font-bold glow-gold"
+              onClick={() => {
+                window.location.href = "/dashboard";
+              }}
+              className="font-bold glow-gold gap-1.5"
             >
-              Przejdź do Panelu →
+              <LayoutDashboard className="size-4" />
+              Otwórz panel
+              <ArrowRight className="size-3.5" />
             </Button>
           ) : (
             <>
@@ -126,10 +113,14 @@ export function Header({ onTrial, onLogin }: HeaderProps) {
           <div className="pt-2 flex flex-col gap-2">
             {isLoggedIn ? (
               <Button
-                onClick={() => (window.location.href = "/dashboard")}
-                className="w-full font-bold glow-gold"
+                onClick={() => {
+                  window.location.href = "/dashboard";
+                }}
+                className="w-full font-bold glow-gold gap-1.5"
               >
-                Przejdź do Panelu →
+                <LayoutDashboard className="size-4" />
+                Otwórz panel
+                <ArrowRight className="size-3.5" />
               </Button>
             ) : (
               <>

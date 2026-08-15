@@ -655,10 +655,10 @@ app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
 
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Brak skonfigurowanego klucza GOOGLE_PLACES_API_KEY" });
+      return res.status(500).json({ error: "Brak GOOGLE_PLACES_API_KEY w środowisku serwera" });
     }
 
-    // Nowy adres Google Places API (v1)
+    // Nowy adres Places API (v1)
     const googleUrl = `https://places.googleapis.com/v1/places/${placeId}?languageCode=pl`;
 
     const response = await fetch(googleUrl, {
@@ -666,41 +666,45 @@ app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
-        // W FieldMask określamy dokładnie pola, które chcemy pobrać:
-        "X-Goog-FieldMask": "rating,userRatingCount,reviews,displayName",
+        // Pełna maska pól zagnieżdżonych:
+        "X-Goog-FieldMask": "rating,userRatingCount,displayName,reviews",
       },
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Szczegóły błędu Google Places API (New):", data);
+      console.error("Błąd Google Places API:", data);
       return res.status(response.status).json({
-        error: "Nie udało się pobrać danych z Google Maps",
-        details: data.error?.message || "Błąd Google API",
+        error: data.error?.message || "Błąd Google Places API",
+        status: data.error?.status,
       });
     }
 
-    // Mapowanie odpowiedzi z nowego formatu Google Places API
-    const reviews = (data.reviews || []).map((rev: any) => ({
-      authorName: rev.authorAttribution?.displayName || "Anonim",
+    // Bezpieczne mapowanie recenzji z fallbackami
+    const rawReviews = Array.isArray(data.reviews) ? data.reviews : [];
+    const reviews = rawReviews.map((rev: any) => ({
+      authorName: rev.authorAttribution?.displayName || "Gość lokalu",
       authorPhoto: rev.authorAttribution?.photoUri || null,
       rating: rev.rating || 5,
       text: rev.text?.text || rev.originalText?.text || "",
-      relativeTime: rev.relativePublishTimeDescription || "",
-      publishTime: rev.publishTime,
+      relativeTime: rev.relativePublishTimeDescription || "Niedawno",
+      publishTime: rev.publishTime || null,
     }));
 
     return res.json({
       hasPlaceId: true,
       restaurantName: data.displayName?.text || restaurant.name,
-      rating: data.rating || 0,
-      totalReviews: data.userRatingCount || 0,
+      rating: typeof data.rating === "number" ? data.rating : 0,
+      totalReviews: typeof data.userRatingCount === "number" ? data.userRatingCount : 0,
       reviews,
     });
-  } catch (error) {
-    console.error("Błąd pobierania opinii Google:", error);
-    return res.status(500).json({ error: "Błąd serwera" });
+  } catch (error: any) {
+    console.error("Szczegóły błędu serwera:", error);
+    return res.status(500).json({ 
+      error: "Wewnętrzny błąd serwera", 
+      details: error.message || String(error) 
+    });
   }
 });
 

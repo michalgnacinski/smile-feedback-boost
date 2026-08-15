@@ -10,6 +10,7 @@ interface Review {
   rating: number;
   text: string;
   relativeTime: string;
+  publishTime?: string | number | null;
 }
 
 interface Props {
@@ -30,12 +31,19 @@ export function GoogleReviewsWidget({ slug, googleReviewLink }: Props) {
     if (!slug) return;
     setLoading(true);
     fetch(`/api/restaurant/${slug}/google-reviews`)
-      .then((res) => res.json())
-      .then((resData) => {
+    .then((res) => res.json())
+    .then((resData) => {
+        if (resData.reviews && Array.isArray(resData.reviews)) {
+        resData.reviews.sort((a: Review, b: Review) => {
+            const timeA = a.publishTime ? new Date(a.publishTime).getTime() : 0;
+            const timeB = b.publishTime ? new Date(b.publishTime).getTime() : 0;
+            return timeB - timeA;
+        });
+        }
         setData(resData);
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+  })
+  .catch(() => setLoading(false));
   }, [slug]);
 
   if (loading) {

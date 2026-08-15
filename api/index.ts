@@ -624,18 +624,7 @@ app.post("/api/restaurants", async (req, res) => {
   }
 });
 
-// Helper do wyciągania Place ID z linku (jeśli link to https://search.google.com/local/writereview?placeid=XYZ)
-function extractPlaceId(link: string | null): string | null {
-  if (!link) return null;
-  try {
-    const url = new URL(link);
-    return url.searchParams.get("placeid") || null;
-  } catch {
-    return null;
-  }
-}
-
-// ENDPOINT: POBIERANIE OPINII Z GOOGLE PLACES API
+// ENDPOINT: POBIERANIE OPINII Z GOOGLE PLACES API (NOWY STANDARD v1)
 app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
   try {
     const { slug } = req.params;
@@ -653,7 +642,6 @@ app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
       return res.status(404).json({ error: "Nie znaleziono lokalu" });
     }
 
-    // Jeśli place_id nie jest wpisany ręcznie, spróbuj wyciągnąć go z zapisanego google_review_link
     const placeId = restaurant.google_place_id || extractPlaceId(restaurant.google_review_link);
 
     if (!placeId) {
@@ -670,36 +658,45 @@ app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
       return res.status(500).json({ error: "Brak skonfigurowanego klucza GOOGLE_PLACES_API_KEY" });
     }
 
-    // Zapytanie do Google Places API (Place Details)
-    const fields = "rating,user_ratings_total,reviews,name";
-    const googleUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&language=pl&key=${apiKey}`;
+    // Nowy adres Google Places API (v1)
+    const googleUrl = `https://places.googleapis.com/v1/places/${placeId}?languageCode=pl`;
 
-    const response = await fetch(googleUrl);
+    const response = await fetch(googleUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        // W FieldMask określamy dokładnie pola, które chcemy pobrać:
+        "X-Goog-FieldMask": "rating,userRatingCount,reviews,displayName",
+      },
+    });
+
     const data = await response.json();
 
-    if (data.status !== "OK") {
-      console.error("Szczegóły błędu Google API:", data);
-      return res.status(400).json({ 
+    if (!response.ok) {
+      console.error("Szczegóły błędu Google Places API (New):", data);
+      return res.status(response.status).json({
         error: "Nie udało się pobrać danych z Google Maps",
-        googleStatus: data.status,
-        googleErrorMessage: data.error_message || "Brak szczegółowego komunikatu"
+        details: data.error?.message || "Błąd Google API",
       });
     }
 
-    const result = data.result;
+    // Mapowanie odpowiedzi z nowego formatu Google Places API
+    const reviews = (data.reviews || []).map((rev: any) => ({
+      authorName: rev.authorAttribution?.displayName || "Anonim",
+      authorPhoto: rev.authorAttribution?.photoUri || null,
+      rating: rev.rating || 5,
+      text: rev.text?.text || rev.originalText?.text || "",
+      relativeTime: rev.relativePublishTimeDescription || "",
+      publishTime: rev.publishTime,
+    }));
 
     return res.json({
       hasPlaceId: true,
-      rating: result.rating || 0,
-      totalReviews: result.user_ratings_total || 0,
-      reviews: (result.reviews || []).map((rev: any) => ({
-        authorName: rev.author_name,
-        authorPhoto: rev.profile_photo_url,
-        rating: rev.rating,
-        text: rev.text,
-        relativeTime: rev.relative_time_description,
-        time: rev.time,
-      })),
+      restaurantName: data.displayName?.text || restaurant.name,
+      rating: data.rating || 0,
+      totalReviews: data.userRatingCount || 0,
+      reviews,
     });
   } catch (error) {
     console.error("Błąd pobierania opinii Google:", error);

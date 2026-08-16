@@ -701,10 +701,12 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
 
         // 5 Złotych Gwiazdek
         currentY -= 8 * MM_TO_PT;
+        const starSvg = "M 10 0 L 13 7 L 20 7 L 15 12 L 17 19 L 10 15 L 3 19 L 5 12 L 0 7 L 7 7 Z";
         for (let star = 0; star < 5; star++) {
           page.drawSvgPath(starSvg, {
-            x: textX + star * 13,
+            x: textX + star * 19, // Zwiększony odstęp między gwiazdkami
             y: currentY + 12,
+            scale: 0.75,         // Lekko zmniejszona skala, aby gwiazdki nie zlewały się ze sobą
             color: rgb(0.96, 0.62, 0.04),
           });
         }

@@ -712,7 +712,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
 
         // Zachęta do oceny
         currentY -= 7 * MM_TO_PT;
-        page.drawText("Jak smakowalo?", {
+        page.drawText("Jak smakowało?", {
           x: textX,
           y: currentY,
           size: 9.5,
@@ -721,7 +721,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         });
 
         currentY -= 4.5 * MM_TO_PT;
-        page.drawText("Zeskanuj i ocen w Google", {
+        page.drawText("Zeskanuj i oceń w Google", {
           x: textX,
           y: currentY,
           size: 8,

@@ -546,9 +546,7 @@ app.post("/api/restaurant/:slug/bulk-tables", async (req, res) => {
   }
 });
 
-// 11. GENEROWANIE ARKUSZA PDF A4 (Format 90x50 mm)
-// 11. GENEROWANIE ARKUSZA PDF A4 (Format 90x50 mm - Wersja PREMIUM)
-// 11. GENEROWANIE ARKUSZA PDF A4 (Format 55x40 mm - Ultra Kompakt)
+// 11. GENEROWANIE ARKUSZA PDF A4 (Format 55x40 mm - Wersja PREMIUM z Brandingiem Google)
 app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
   try {
     const { slug } = req.params;
@@ -574,8 +572,6 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
 
     // Próba wczytania logo
     let logoImage: any = null;
-    let logoDims = { width: 0, height: 0 };
-
     if (restaurant.logo_url) {
       try {
         const isJpeg =
@@ -589,19 +585,15 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         } else {
           logoImage = await pdfDoc.embedPng(imageBytes);
         }
-
-        // Skalowanie logo dla formatu 55x40mm: max 20mm szerokości, max 10mm wysokości
-        logoDims = logoImage.scaleToFit(20 * MM_TO_PT, 10 * MM_TO_PT);
       } catch (e) {
         console.warn("Nie udalo sie osadzic logo:", e);
       }
     }
 
-    // Nowe wymiary: 55 mm x 40 mm
+    // Wymiary 55 mm x 40 mm
     const cardWidth = 55 * MM_TO_PT;  // ~155.9 pt
     const cardHeight = 40 * MM_TO_PT; // ~113.4 pt
 
-    // Siatka 3 kolumny x 7 wierszy = 21 winietek na arkusz A4
     const cols = 3;
     const rows = 7;
     const cardsPerPage = cols * rows;
@@ -614,8 +606,13 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
     const tables = restaurant.qr_codes;
     const totalPages = Math.ceil(tables.length / cardsPerPage);
 
-    // Wektorowa definicja gwiazdki
     const starSvg = "M 10 0 L 13 7 L 20 7 L 15 12 L 17 19 L 10 15 L 3 19 L 5 12 L 0 7 L 7 7 Z";
+
+    // Oficjalne kolory Google
+    const gBlue = rgb(0.26, 0.52, 0.96);   // #4285F4
+    const gRed = rgb(0.92, 0.26, 0.21);    // #EA4335
+    const gYellow = rgb(0.98, 0.73, 0.02); // #FBBC05
+    const gGreen = rgb(0.20, 0.66, 0.33);  // #34A853
 
     for (let p = 0; p < totalPages; p++) {
       const page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -646,7 +643,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           });
         }
 
-        // Linie cięcia + złoty pasek akcentowy na górze
+        // Linie cięcia + złoty pasek na górze
         page.drawRectangle({
           x,
           y,
@@ -664,7 +661,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           color: rgb(0.96, 0.62, 0.04),
         });
 
-        // 2. Kod QR (Rozmiar 28x28 mm — łatwy odczyt telefonem)
+        // 2. Kod QR (Rozmiar 27x27 mm z zaokrąglonym białym tłem)
         const targetUrl = `https://dajopinie.com.pl/r/${table.code_identifier}`;
         const qrBuffer = await QRCode.toBuffer(targetUrl, {
           width: 240,
@@ -673,11 +670,10 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         });
         const qrImage = await pdfDoc.embedPng(qrBuffer);
 
-        const qrSize = 28 * MM_TO_PT;
+        const qrSize = 27 * MM_TO_PT;
         const qrX = x + cardWidth - qrSize - 3.5 * MM_TO_PT;
         const qrY = y + (cardHeight - qrSize) / 2;
 
-        // Białe tło pod QR
         page.drawRectangle({
           x: qrX - 1.5,
           y: qrY - 1.5,
@@ -687,60 +683,84 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         });
         page.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize });
 
-        // 3. Lewa strona (Logo / Gwiazdki / Tekst)
-        const textX = x + 3.5 * MM_TO_PT;
-        let currentY = y + cardHeight - 3.5 * MM_TO_PT;
+        // 3. Lewa strona - Sekcja górna: Logo kwadratowe + Nazwa restauracji
+        const leftX = x + 3.5 * MM_TO_PT;
+        const topY = y + cardHeight - 3.5 * MM_TO_PT;
+
+        const logoBoxSize = 9 * MM_TO_PT; // ~9x9 mm kwadrat na logo
+        const logoBoxY = topY - logoBoxSize;
+
+        // Ciemny kwadratowy kafelek pod logo z obramowaniem
+        page.drawRectangle({
+          x: leftX,
+          y: logoBoxY,
+          width: logoBoxSize,
+          height: logoBoxSize,
+          color: rgb(0.08, 0.11, 0.16),
+          borderColor: rgb(0.3, 0.35, 0.45),
+          borderWidth: 0.5,
+        });
 
         if (logoImage) {
-          currentY -= logoDims.height;
+          // Kwadratowe dopasowanie 1:1
           page.drawImage(logoImage, {
-            x: textX,
-            y: currentY,
-            width: logoDims.width,
-            height: logoDims.height,
-          });
-        } else {
-          currentY -= 4.5 * MM_TO_PT;
-          const cleanName = (restaurant.name || "Restauracja")
-            .replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, "a");
-          const restName = cleanName.length > 13 ? cleanName.substring(0, 11) + "..." : cleanName;
-          page.drawText(restName, { x: textX, y: currentY, size: 8.5, font: fontBold, color: rgb(1, 1, 1) });
-        }
-
-        // 5 Złotych Gwiazdek
-        currentY -= 5.5 * MM_TO_PT;
-        for (let star = 0; star < 5; star++) {
-          page.drawSvgPath(starSvg, {
-            x: textX + star * 10,
-            y: currentY + 8,
-            scale: 0.5,
-            color: rgb(0.96, 0.62, 0.04),
+            x: leftX + 1,
+            y: logoBoxY + 1,
+            width: logoBoxSize - 2,
+            height: logoBoxSize - 2,
           });
         }
 
-        // Hasło
-        currentY -= 5 * MM_TO_PT;
-        page.drawText("Ocen nas", {
-          x: textX,
-          y: currentY,
+        // Nazwa restauracji po prawej stronie logo
+        const cleanName = (restaurant.name || "Restauracja")
+          .replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, "a");
+        const restName = cleanName.length > 11 ? cleanName.substring(0, 9) + "..." : cleanName;
+
+        page.drawText(restName, {
+          x: leftX + logoBoxSize + 2 * MM_TO_PT,
+          y: logoBoxY + 2.5 * MM_TO_PT,
           size: 7.5,
           font: fontBold,
           color: rgb(1, 1, 1),
         });
 
-        currentY -= 3.5 * MM_TO_PT;
-        page.drawText("w Google", {
-          x: textX,
-          y: currentY,
-          size: 6.5,
-          font: fontRegular,
-          color: rgb(0.75, 0.8, 0.9),
+        // 4. 5 Złotych Gwiazdek
+        const starsY = logoBoxY - 4 * MM_TO_PT;
+        for (let star = 0; star < 5; star++) {
+          page.drawSvgPath(starSvg, {
+            x: leftX + star * 8.5,
+            y: starsY + 6,
+            scale: 0.42,
+            color: rgb(0.96, 0.62, 0.04),
+          });
+        }
+
+        // 5. Call to action + Kolorowe logo GOOGLE
+        const ctaY = starsY - 4.5 * MM_TO_PT;
+        page.drawText("Ocen nas w", {
+          x: leftX,
+          y: ctaY,
+          size: 7,
+          font: fontBold,
+          color: rgb(1, 1, 1),
         });
 
-        // 4. Etykieta stolika (dla obsługi w lewym dolnym rogu)
+        // Wielokolorowy napis Google (G-o-o-g-l-e)
+        const gStartX = leftX;
+        const gY = ctaY - 3.8 * MM_TO_PT;
+        const gSize = 8;
+
+        page.drawText("G", { x: gStartX, y: gY, size: gSize, font: fontBold, color: gBlue });
+        page.drawText("o", { x: gStartX + 6.2, y: gY, size: gSize, font: fontBold, color: gRed });
+        page.drawText("o", { x: gStartX + 11.2, y: gY, size: gSize, font: fontBold, color: gYellow });
+        page.drawText("g", { x: gStartX + 16.2, y: gY, size: gSize, font: fontBold, color: gBlue });
+        page.drawText("l", { x: gStartX + 21.2, y: gY, size: gSize, font: fontBold, color: gGreen });
+        page.drawText("e", { x: gStartX + 23.8, y: gY, size: gSize, font: fontBold, color: gRed });
+
+        // 6. Etykieta stolika (dla obsługi w lewym dolnym rogu)
         const safeLabel = String(table.label || `Stolik #${i + 1}`).toUpperCase();
         page.drawText(safeLabel, {
-          x: textX,
+          x: leftX,
           y: y + 2.5 * MM_TO_PT,
           size: 4.8,
           font: fontBold,

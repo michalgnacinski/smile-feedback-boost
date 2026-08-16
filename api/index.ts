@@ -28,7 +28,7 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "DajOpinie <onboarding@resend.dev>";
-const APP_URL = process.env.APP_URL || "https://dajopinie.pl";
+const APP_URL = process.env.APP_URL || "https://dajopinie.com.pl";
 
 async function sendWelcomeEmail(to: string, restaurantName: string, slug: string) {
   if (!resend) return;
@@ -145,7 +145,7 @@ app.post("/api/auth/register", async (req, res) => {
         data: {
           restaurant_id: newRestaurant.id,
           label: "Stolik #01",
-          code_identifier: `${slug}-stolik01`,
+          code_identifier: `${slug}-stolik-01`,
         },
       });
 
@@ -236,13 +236,13 @@ app.get("/api/dashboard", async (req, res) => {
       restaurant = await db.restaurants.findUnique({
         where: { id: restaurant.id },
         include: {
-          qr_codes: { include: { analytics_events: true } },
+          qr_codes: { include: { analytics_events: true }, orderBy: { created_at: "asc" } },
         },
       });
     } else {
       restaurant = await db.restaurants.findFirst({
         include: {
-          qr_codes: { include: { analytics_events: true } },
+          qr_codes: { include: { analytics_events: true }, orderBy: { created_at: "asc" } },
         },
       });
     }
@@ -446,7 +446,6 @@ app.post("/api/qr-codes", async (req, res) => {
       return res.status(404).json({ error: "Nie znaleziono restauracji" });
     }
 
-    // Pozwalamy na dodawanie stolików w trakcie aktywnego trialu lub subskrypcji ACTIVE
     const now = new Date();
     const isTrialValid = restaurant.subscription_status === "TRIAL" && (!restaurant.trial_ends_at || new Date(restaurant.trial_ends_at) > now);
     const isActive = restaurant.subscription_status === "ACTIVE";
@@ -496,244 +495,7 @@ app.delete("/api/qr-codes/:id", async (req, res) => {
   }
 });
 
-// 10. STRIPE CHECKOUT
-app.post("/api/stripe/create-checkout-session", async (req, res) => {
-  try {
-    const { restaurantSlug } = req.body;
-    const restaurant = await db.restaurants.findUnique({
-      where: { slug: restaurantSlug },
-      include: { user: true },
-    });
-
-    if (!restaurant) {
-      return res.status(404).json({ error: "Nie znaleziono restauracji" });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "blik"],
-      mode: "subscription",
-      customer_email: restaurant.user?.email,
-      client_reference_id: restaurant.slug,
-      line_items: [
-        {
-          price_data: {
-            currency: "pln",
-            product_data: {
-              name: "DajOpinie — Pakiet Gastro Starter",
-              description: `Miesięczna subskrypcja dla lokalu: ${restaurant.name}`,
-            },
-            unit_amount: 9900,
-            recurring: { interval: "month" },
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: `${APP_URL}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${APP_URL}/dashboard?payment=cancelled`,
-    });
-
-    return res.json({ url: session.url });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message || "Błąd Stripe" });
-  }
-});
-
-// 11. STRIPE VERIFY
-app.post("/api/stripe/verify-session", async (req, res) => {
-  try {
-    const { sessionId, restaurantSlug } = req.body;
-    const updated = await db.restaurants.update({
-      where: { slug: restaurantSlug },
-      data: {
-        subscription_status: "ACTIVE",
-        subscription_started_at: new Date(),
-      },
-    });
-    return res.json({ success: true, status: updated.subscription_status });
-  } catch (error) {
-    return res.status(500).json({ error: "Błąd bazy danych" });
-  }
-});
-
-// DODAWANIE NOWEGO LOKALU
-app.post("/api/restaurants", async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    let userId: string | null = null;
-
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        userId = decoded.userId;
-      } catch (e) {}
-    }
-
-    // Fallback: jeśli z jakiegoś powodu brak tokena w teście, weź pierwszego usera
-    if (!userId) {
-      const firstUser = await db.users.findFirst();
-      userId = firstUser?.id || null;
-    }
-
-    if (!userId) {
-      return res.status(401).json({ error: "Brak autoryzacji" });
-    }
-
-    const { name } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: "Wpisz nazwę lokalu!" });
-    }
-
-    let baseSlug = slugify(name);
-    let slug = baseSlug;
-    let counter = 1;
-
-    while (await db.restaurants.findUnique({ where: { slug } })) {
-      slug = `${baseSlug}-${counter}`;
-      counter++;
-    }
-
-    const now = new Date();
-    const trialEnds = new Date(now);
-    trialEnds.setDate(now.getDate() + 14);
-
-    const newRestaurant = await db.$transaction(async (tx) => {
-      const rest = await tx.restaurants.create({
-        data: {
-          user_id: userId!,
-          name: name.trim(),
-          slug,
-          subscription_status: "TRIAL",
-          trial_started_at: now,
-          trial_ends_at: trialEnds,
-        },
-      });
-
-      await tx.qr_codes.create({
-        data: {
-          restaurant_id: rest.id,
-          label: "Stolik #01",
-          code_identifier: `${slug}-stolik01`,
-        },
-      });
-
-      return rest;
-    });
-
-    return res.status(201).json(newRestaurant);
-  } catch (error) {
-    console.error("Błąd tworzenia lokalu:", error);
-    return res.status(500).json({ error: "Błąd serwera podczas tworzenia lokalu" });
-  }
-});
-
-// ENDPOINT: POBIERANIE OPINII Z GOOGLE PLACES API (NOWY STANDARD v1)
-app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
-  try {
-    const { slug } = req.params;
-    const restaurant = await db.restaurants.findUnique({
-      where: { slug },
-      select: {
-        id: true,
-        name: true,
-        google_place_id: true,
-        google_review_link: true,
-      },
-    });
-
-    if (!restaurant) {
-      return res.status(404).json({ error: "Nie znaleziono lokalu" });
-    }
-
-    function extractPlaceId(link: string | null): string | null {
-      if (!link) return null;
-      try {
-        const url = new URL(link);
-        const fromParam = url.searchParams.get("placeid");
-        if (fromParam) return fromParam;
-
-        // Fallback dla linków zawierających ChIJ bezpośrednio w ścieżce
-        const match = link.match(/(ChIJ[a-zA-Z0-9_-]+)/);
-        return match ? match[1] : null;
-      } catch {
-        const match = link.match(/(ChIJ[a-zA-Z0-9_-]+)/);
-        return match ? match[1] : null;
-      }
-    }
-
-    const placeId = restaurant.google_place_id || extractPlaceId(restaurant.google_review_link);
-
-    if (!placeId) {
-      return res.json({
-        hasPlaceId: false,
-        rating: null,
-        totalReviews: 0,
-        reviews: [],
-      });
-    }
-
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "Brak GOOGLE_PLACES_API_KEY w środowisku serwera" });
-    }
-
-    // Nowy adres Places API (v1)
-    const googleUrl = `https://places.googleapis.com/v1/places/${placeId}?languageCode=pl`;
-
-    const response = await fetch(googleUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        // Pełna maska pól zagnieżdżonych:
-        "X-Goog-FieldMask": "rating,userRatingCount,displayName,reviews",
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("Błąd Google Places API:", data);
-      return res.status(response.status).json({
-        error: data.error?.message || "Błąd Google Places API",
-        status: data.error?.status,
-      });
-    }
-
-    // Bezpieczne mapowanie recenzji z fallbackami
-    const rawReviews = Array.isArray(data.reviews) ? data.reviews : [];
-
-    const reviews = rawReviews
-      .map((rev: any) => ({
-        authorName: rev.authorAttribution?.displayName || "Gość lokalu",
-        rating: rev.rating || 5,
-        text: rev.text?.text || rev.originalText?.text || "",
-        relativeTime: rev.relativePublishTimeDescription || "Niedawno",
-        publishTime: rev.publishTime ? new Date(rev.publishTime).getTime() : 0,
-      }))
-      // Sortujemy od najnowszych
-      .sort((a: any, b: any) => b.publishTime - a.publishTime);
-
-    return res.json({
-      hasPlaceId: true,
-      restaurantName: data.displayName?.text || restaurant.name,
-      rating: typeof data.rating === "number" ? data.rating : 0,
-      totalReviews: typeof data.userRatingCount === "number" ? data.userRatingCount : 0,
-      reviews,
-    });
-  } catch (error: any) {
-    console.error("Szczegóły błędu serwera:", error);
-    return res.status(500).json({ 
-      error: "Wewnętrzny błąd serwera", 
-      details: error.message || String(error) 
-    });
-  }
-});
-
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import QRCode from "qrcode";
-
-// 1. POPRAWNE HURTOWE GENEROWANIE KODÓW DLA STOLIKÓW
+// 10. HURTOWE GENEROWANIE STOLIKÓW
 app.post("/api/restaurant/:slug/bulk-tables", async (req, res) => {
   try {
     const { slug } = req.params;
@@ -744,7 +506,7 @@ app.post("/api/restaurant/:slug/bulk-tables", async (req, res) => {
       return res.status(400).json({ error: "Podaj liczbę od 1 do 100." });
     }
 
-    const restaurant = await prisma.restaurant.findUnique({
+    const restaurant = await db.restaurants.findUnique({
       where: { slug },
     });
 
@@ -752,29 +514,29 @@ app.post("/api/restaurant/:slug/bulk-tables", async (req, res) => {
       return res.status(404).json({ error: "Nie znaleziono restauracji." });
     }
 
-    // Usuwamy stare kody QR dla tego lokalu
-    await prisma.qrCode.deleteMany({
-      where: { restaurantId: restaurant.id },
+    // Usuwamy stare kody QR
+    await db.qr_codes.deleteMany({
+      where: { restaurant_id: restaurant.id },
     });
 
-    // Tworzymy nowe kody QR
+    // Tworzymy nowe kody stolików
     const qrData = Array.from({ length: numCount }, (_, i) => {
       const tableNum = i + 1;
       const formattedNum = tableNum < 10 ? `0${tableNum}` : `${tableNum}`;
       return {
         label: `Stolik #${formattedNum}`,
-        codeIdentifier: `${restaurant.slug}-stolik-${tableNum}`,
-        restaurantId: restaurant.id,
+        code_identifier: `${restaurant.slug}-stolik-${formattedNum}`,
+        restaurant_id: restaurant.id,
       };
     });
 
-    await prisma.qrCode.createMany({
+    await db.qr_codes.createMany({
       data: qrData,
     });
 
-    const tables = await prisma.qrCode.findMany({
-      where: { restaurantId: restaurant.id },
-      orderBy: { createdAt: "asc" },
+    const tables = await db.qr_codes.findMany({
+      where: { restaurant_id: restaurant.id },
+      orderBy: { created_at: "asc" },
     });
 
     return res.json({ success: true, tables });
@@ -784,21 +546,21 @@ app.post("/api/restaurant/:slug/bulk-tables", async (req, res) => {
   }
 });
 
-// 2. POPRAWNE GENEROWANIE PLIKU PDF A4 (Format 90x50 mm)
+// 11. GENEROWANIE ARKUSZA PDF A4 (Format 90x50 mm)
 app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const restaurant = await prisma.restaurant.findUnique({
+    const restaurant = await db.restaurants.findUnique({
       where: { slug },
       include: {
-        qrCodes: {
-          orderBy: { createdAt: "asc" },
+        qr_codes: {
+          orderBy: { created_at: "asc" },
         },
       },
     });
 
-    if (!restaurant || !restaurant.qrCodes.length) {
+    if (!restaurant || !restaurant.qr_codes.length) {
       return res.status(400).json({ error: "Brak stolików do wydruku." });
     }
 
@@ -806,14 +568,13 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    // Przeliczniki formatu A4 i wymiarów winietki 90x50 mm
     const MM_TO_PT = 2.83465;
-    const cardWidth = 90 * MM_TO_PT; // ~255 pt
-    const cardHeight = 50 * MM_TO_PT; // ~141.7 pt
+    const cardWidth = 90 * MM_TO_PT;
+    const cardHeight = 50 * MM_TO_PT;
 
     const cols = 2;
     const rows = 5;
-    const cardsPerPage = cols * rows; // 10 sztuk na arkusz A4
+    const cardsPerPage = cols * rows;
 
     const pageWidth = 595.28;
     const pageHeight = 841.89;
@@ -821,7 +582,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
     const marginX = (pageWidth - cols * cardWidth) / 2;
     const marginY = (pageHeight - rows * cardHeight) / 2;
 
-    const tables = restaurant.qrCodes;
+    const tables = restaurant.qr_codes;
     const totalPages = Math.ceil(tables.length / cardsPerPage);
 
     for (let p = 0; p < totalPages; p++) {
@@ -836,7 +597,6 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         const x = marginX + col * cardWidth;
         const y = pageHeight - marginY - (row + 1) * cardHeight;
 
-        // 1. Tło winietki (#0B0F17) + linie cięcia
         page.drawRectangle({
           x,
           y,
@@ -847,8 +607,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           borderWidth: 0.5,
         });
 
-        // 2. Generowanie kodu QR
-        const targetUrl = `https://dajopinie.com.pl/r/${table.codeIdentifier}`;
+        const targetUrl = `https://dajopinie.com.pl/r/${table.code_identifier}`;
         const qrBuffer = await QRCode.toBuffer(targetUrl, {
           width: 300,
           margin: 1,
@@ -863,7 +622,6 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         const qrX = x + cardWidth - qrSize - 6 * MM_TO_PT;
         const qrY = y + (cardHeight - qrSize) / 2;
 
-        // Białe tło pod QR
         page.drawRectangle({
           x: qrX - 2,
           y: qrY - 2,
@@ -879,19 +637,16 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           height: qrSize,
         });
 
-        // 3. Teksty informacyjne
         const textX = x + 6 * MM_TO_PT;
 
-        // Etykieta stolika (złoty kolor)
         page.drawText(table.label.toUpperCase(), {
           x: textX,
           y: y + cardHeight - 11 * MM_TO_PT,
           size: 8.5,
           font: fontBold,
-          color: rgb(0.96, 0.62, 0.04), // #f59e0b
+          color: rgb(0.96, 0.62, 0.04),
         });
 
-        // Nazwa restauracji
         const restName =
           restaurant.name.length > 17
             ? restaurant.name.substring(0, 15) + "..."
@@ -942,6 +697,234 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
   } catch (err: any) {
     console.error("PDF generation error:", err);
     return res.status(500).json({ error: "Błąd generowania pliku PDF." });
+  }
+});
+
+// 12. STRIPE CHECKOUT
+app.post("/api/stripe/create-checkout-session", async (req, res) => {
+  try {
+    const { restaurantSlug } = req.body;
+    const restaurant = await db.restaurants.findUnique({
+      where: { slug: restaurantSlug },
+      include: { user: true },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ error: "Nie znaleziono restauracji" });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card", "blik"],
+      mode: "subscription",
+      customer_email: restaurant.user?.email,
+      client_reference_id: restaurant.slug,
+      line_items: [
+        {
+          price_data: {
+            currency: "pln",
+            product_data: {
+              name: "DajOpinie — Pakiet Gastro Starter",
+              description: `Miesięczna subskrypcja dla lokalu: ${restaurant.name}`,
+            },
+            unit_amount: 9900,
+            recurring: { interval: "month" },
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: `${APP_URL}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${APP_URL}/dashboard?payment=cancelled`,
+    });
+
+    return res.json({ url: session.url });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || "Błąd Stripe" });
+  }
+});
+
+// 13. STRIPE VERIFY
+app.post("/api/stripe/verify-session", async (req, res) => {
+  try {
+    const { sessionId, restaurantSlug } = req.body;
+    const updated = await db.restaurants.update({
+      where: { slug: restaurantSlug },
+      data: {
+        subscription_status: "ACTIVE",
+        subscription_started_at: new Date(),
+      },
+    });
+    return res.json({ success: true, status: updated.subscription_status });
+  } catch (error) {
+    return res.status(500).json({ error: "Błąd bazy danych" });
+  }
+});
+
+// 14. DODAWANIE NOWEGO LOKALU
+app.post("/api/restaurants", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    let userId: string | null = null;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        userId = decoded.userId;
+      } catch (e) {}
+    }
+
+    if (!userId) {
+      const firstUser = await db.users.findFirst();
+      userId = firstUser?.id || null;
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: "Brak autoryzacji" });
+    }
+
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "Wpisz nazwę lokalu!" });
+    }
+
+    let baseSlug = slugify(name);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await db.restaurants.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    const now = new Date();
+    const trialEnds = new Date(now);
+    trialEnds.setDate(now.getDate() + 14);
+
+    const newRestaurant = await db.$transaction(async (tx) => {
+      const rest = await tx.restaurants.create({
+        data: {
+          user_id: userId!,
+          name: name.trim(),
+          slug,
+          subscription_status: "TRIAL",
+          trial_started_at: now,
+          trial_ends_at: trialEnds,
+        },
+      });
+
+      await tx.qr_codes.create({
+        data: {
+          restaurant_id: rest.id,
+          label: "Stolik #01",
+          code_identifier: `${slug}-stolik-01`,
+        },
+      });
+
+      return rest;
+    });
+
+    return res.status(201).json(newRestaurant);
+  } catch (error) {
+    console.error("Błąd tworzenia lokalu:", error);
+    return res.status(500).json({ error: "Błąd serwera podczas tworzenia lokalu" });
+  }
+});
+
+// 15. POBIERANIE OPINII Z GOOGLE PLACES API
+app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const restaurant = await db.restaurants.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        google_place_id: true,
+        google_review_link: true,
+      },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ error: "Nie znaleziono lokalu" });
+    }
+
+    function extractPlaceId(link: string | null): string | null {
+      if (!link) return null;
+      try {
+        const url = new URL(link);
+        const fromParam = url.searchParams.get("placeid");
+        if (fromParam) return fromParam;
+
+        const match = link.match(/(ChIJ[a-zA-Z0-9_-]+)/);
+        return match ? match[1] : null;
+      } catch {
+        const match = link.match(/(ChIJ[a-zA-Z0-9_-]+)/);
+        return match ? match[1] : null;
+      }
+    }
+
+    const placeId = restaurant.google_place_id || extractPlaceId(restaurant.google_review_link);
+
+    if (!placeId) {
+      return res.json({
+        hasPlaceId: false,
+        rating: null,
+        totalReviews: 0,
+        reviews: [],
+      });
+    }
+
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "Brak GOOGLE_PLACES_API_KEY w środowisku serwera" });
+    }
+
+    const googleUrl = `https://places.googleapis.com/v1/places/${placeId}?languageCode=pl`;
+
+    const response = await fetch(googleUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "rating,userRatingCount,displayName,reviews",
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Błąd Google Places API:", data);
+      return res.status(response.status).json({
+        error: data.error?.message || "Błąd Google Places API",
+        status: data.error?.status,
+      });
+    }
+
+    const rawReviews = Array.isArray(data.reviews) ? data.reviews : [];
+
+    const reviews = rawReviews
+      .map((rev: any) => ({
+        authorName: rev.authorAttribution?.displayName || "Gość lokalu",
+        rating: rev.rating || 5,
+        text: rev.text?.text || rev.originalText?.text || "",
+        relativeTime: rev.relativePublishTimeDescription || "Niedawno",
+        publishTime: rev.publishTime ? new Date(rev.publishTime).getTime() : 0,
+      }))
+      .sort((a: any, b: any) => b.publishTime - a.publishTime);
+
+    return res.json({
+      hasPlaceId: true,
+      restaurantName: data.displayName?.text || restaurant.name,
+      rating: typeof data.rating === "number" ? data.rating : 0,
+      totalReviews: typeof data.userRatingCount === "number" ? data.userRatingCount : 0,
+      reviews,
+    });
+  } catch (error: any) {
+    console.error("Szczegóły błędu serwera:", error);
+    return res.status(500).json({ 
+      error: "Wewnętrzny błąd serwera", 
+      details: error.message || String(error) 
+    });
   }
 });
 

@@ -561,15 +561,14 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
       },
     });
 
-    if (!restaurant || !restaurant.qr_codes.length) {
-      return res.status(400).json({ error: "Brak stolików do wydruku." });
+    if (!restaurant || !restaurant.qr_codes || restaurant.qr_codes.length === 0) {
+      return res.status(400).json({ error: "Brak stolikow do wydruku." });
     }
 
     const pdfDoc = await PDFDocument.create();
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    // Próba wczytania logo restauracji
     let logoImage: any = null;
     let logoDims = { width: 0, height: 0 };
     const MM_TO_PT = 2.83465;
@@ -588,10 +587,9 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           logoImage = await pdfDoc.embedPng(imageBytes);
         }
 
-        // Skalowanie logo - max 40mm szerokości, max 15mm wysokości
-        logoDims = logoImage.scaleToFit(40 * MM_TO_PT, 15 * MM_TO_PT);
+        logoDims = logoImage.scaleToFit(38 * MM_TO_PT, 14 * MM_TO_PT);
       } catch (e) {
-        console.warn("Nie udało się osadzić logo lokalu:", e);
+        console.warn("Nie udalo sie osadzic logo:", e);
       }
     }
 
@@ -601,7 +599,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
     const rows = 5;
     const cardsPerPage = cols * rows;
 
-    const pageWidth = 595.28; // A4 w punktach
+    const pageWidth = 595.28;
     const pageHeight = 841.89;
     const marginX = (pageWidth - cols * cardWidth) / 2;
     const marginY = (pageHeight - rows * cardHeight) / 2;
@@ -609,8 +607,8 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
     const tables = restaurant.qr_codes;
     const totalPages = Math.ceil(tables.length / cardsPerPage);
 
-    // Wektorowa gwiazdka SVG (idealna ostrość w druku)
-    const starSvg = "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z";
+    // Wektorowa definicja gwiazdki bezpieczna dla wszystkich wersji pdf-lib
+    const starSvg = "M 10 0 L 13 7 L 20 7 L 15 12 L 17 19 L 10 15 L 3 19 L 5 12 L 0 7 L 7 7 Z";
 
     for (let p = 0; p < totalPages; p++) {
       const page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -624,24 +622,24 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         const x = marginX + col * cardWidth;
         const y = pageHeight - marginY - (row + 1) * cardHeight;
 
-        // 1. Tło - Płynny Gradient pionowy (generowany z 40 cienkich warstw)
-        const gradientSteps = 40;
+        // 1. Tło gradientowe
+        const gradientSteps = 30;
         for (let s = 0; s < gradientSteps; s++) {
           const ratio = s / gradientSteps;
           page.drawRectangle({
             x,
             y: y + cardHeight - (cardHeight / gradientSteps) * (s + 1),
             width: cardWidth,
-            height: cardHeight / gradientSteps + 1.5, // Nakładanie zapobiega liniom
+            height: cardHeight / gradientSteps + 1.2,
             color: rgb(
-              0.117 + (0.043 - 0.117) * ratio, // Z koloru #1e293b...
-              0.160 + (0.058 - 0.160) * ratio, // ...do koloru #0b0f17
+              0.117 + (0.043 - 0.117) * ratio,
+              0.160 + (0.058 - 0.160) * ratio,
               0.231 + (0.090 - 0.231) * ratio
             ),
           });
         }
 
-        // Subtelna ramka cięcia i złoty akcent na górze
+        // Linie cięcia + złoty pasek u góry
         page.drawRectangle({
           x,
           y,
@@ -650,18 +648,19 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           borderColor: rgb(0.3, 0.35, 0.45),
           borderWidth: 0.5,
         });
+
         page.drawRectangle({
           x,
           y: y + cardHeight - 1.5,
           width: cardWidth,
           height: 1.5,
-          color: rgb(0.96, 0.62, 0.04), // Złoty pasek u góry
+          color: rgb(0.96, 0.62, 0.04),
         });
 
-        // 2. Kod QR (Po prawej stronie)
+        // 2. Generowanie kodu QR
         const targetUrl = `https://dajopinie.com.pl/r/${table.code_identifier}`;
         const qrBuffer = await QRCode.toBuffer(targetUrl, {
-          width: 300,
+          width: 260,
           margin: 1,
           color: { dark: "#000000", light: "#FFFFFF" },
         });
@@ -682,9 +681,8 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
 
         // 3. Lewa strona (Logo, Gwiazdki, Tekst)
         const textX = x + 6 * MM_TO_PT;
-        let currentY = y + cardHeight - 6 * MM_TO_PT;
+        let currentY = y + cardHeight - 5 * MM_TO_PT;
 
-        // Logo lub nazwa
         if (logoImage) {
           currentY -= logoDims.height;
           page.drawImage(logoImage, {
@@ -695,24 +693,25 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           });
         } else {
           currentY -= 6 * MM_TO_PT;
-          const restName = restaurant.name.length > 20 ? restaurant.name.substring(0, 18) + "..." : restaurant.name;
-          page.drawText(restName, { x: textX, y: currentY, size: 12, font: fontBold, color: rgb(1, 1, 1) });
+          const cleanName = (restaurant.name || "Restauracja")
+            .replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, "a");
+          const restName = cleanName.length > 18 ? cleanName.substring(0, 16) + "..." : cleanName;
+          page.drawText(restName, { x: textX, y: currentY, size: 11, font: fontBold, color: rgb(1, 1, 1) });
         }
 
-        // 5 Złotych Gwiazdek Wecktorowych
+        // 5 Złotych Gwiazdek
         currentY -= 8 * MM_TO_PT;
         for (let star = 0; star < 5; star++) {
           page.drawSvgPath(starSvg, {
-            x: textX + star * 11,
-            y: currentY + 7, // offset Y dla SVG
-            scale: 0.35,
-            color: rgb(0.96, 0.62, 0.04), // Złote #f59e0b
+            x: textX + star * 13,
+            y: currentY + 12,
+            color: rgb(0.96, 0.62, 0.04),
           });
         }
 
-        // Zachęta do oceny
+        // Teksty
         currentY -= 7 * MM_TO_PT;
-        page.drawText("Jak smakowało?", {
+        page.drawText("Jak smakowalo?", {
           x: textX,
           y: currentY,
           size: 9.5,
@@ -721,21 +720,22 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         });
 
         currentY -= 4.5 * MM_TO_PT;
-        page.drawText("Zeskanuj i oceń w Google", {
+        page.drawText("Zeskanuj i ocen w Google", {
           x: textX,
           y: currentY,
-          size: 8,
+          size: 7.5,
           font: fontRegular,
           color: rgb(0.7, 0.75, 0.85),
         });
 
-        // 4. Dyskretna etykieta stolika dla obsługi (lewy dolny róg)
-        page.drawText(table.label.toUpperCase(), {
+        // 4. Bezpieczna etykieta stolika (z fallbackiem, bez ryzyka undefined.toUpperCase)
+        const safeLabel = String(table.label || `Stolik #${i + 1}`).toUpperCase();
+        page.drawText(safeLabel, {
           x: textX,
           y: y + 4 * MM_TO_PT,
           size: 5.5,
           font: fontBold,
-          color: rgb(0.4, 0.45, 0.55), // Ciemno-szary, nierzucający się w oczy
+          color: rgb(0.45, 0.5, 0.6),
         });
       }
     }
@@ -746,7 +746,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
     return res.send(Buffer.from(pdfBytes));
   } catch (err: any) {
     console.error("PDF generation error:", err);
-    return res.status(500).json({ error: "Błąd generowania pliku PDF." });
+    return res.status(500).json({ error: err.message || "Blad generowania pliku PDF." });
   }
 });
 

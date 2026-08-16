@@ -4,8 +4,9 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "vite",
     "build": "vite build",
+    "server": "tsx api/index.ts",
     "build:dev": "vite build --mode development",
     "postinstall": "prisma generate",
     "preview": "vite preview",

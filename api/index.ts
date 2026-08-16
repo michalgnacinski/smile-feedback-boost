@@ -548,6 +548,7 @@ app.post("/api/restaurant/:slug/bulk-tables", async (req, res) => {
 
 // 11. GENEROWANIE ARKUSZA PDF A4 (Format 90x50 mm)
 // 11. GENEROWANIE ARKUSZA PDF A4 (Format 90x50 mm - Wersja PREMIUM)
+// 11. GENEROWANIE ARKUSZA PDF A4 (Format 55x40 mm - Ultra Kompakt)
 app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
   try {
     const { slug } = req.params;
@@ -569,9 +570,11 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
+    const MM_TO_PT = 2.83465;
+
+    // Próba wczytania logo
     let logoImage: any = null;
     let logoDims = { width: 0, height: 0 };
-    const MM_TO_PT = 2.83465;
 
     if (restaurant.logo_url) {
       try {
@@ -587,16 +590,20 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           logoImage = await pdfDoc.embedPng(imageBytes);
         }
 
-        logoDims = logoImage.scaleToFit(38 * MM_TO_PT, 14 * MM_TO_PT);
+        // Skalowanie logo dla formatu 55x40mm: max 20mm szerokości, max 10mm wysokości
+        logoDims = logoImage.scaleToFit(20 * MM_TO_PT, 10 * MM_TO_PT);
       } catch (e) {
         console.warn("Nie udalo sie osadzic logo:", e);
       }
     }
 
-    const cardWidth = 90 * MM_TO_PT;
-    const cardHeight = 50 * MM_TO_PT;
-    const cols = 2;
-    const rows = 5;
+    // Nowe wymiary: 55 mm x 40 mm
+    const cardWidth = 55 * MM_TO_PT;  // ~155.9 pt
+    const cardHeight = 40 * MM_TO_PT; // ~113.4 pt
+
+    // Siatka 3 kolumny x 7 wierszy = 21 winietek na arkusz A4
+    const cols = 3;
+    const rows = 7;
     const cardsPerPage = cols * rows;
 
     const pageWidth = 595.28;
@@ -607,7 +614,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
     const tables = restaurant.qr_codes;
     const totalPages = Math.ceil(tables.length / cardsPerPage);
 
-    // Wektorowa definicja gwiazdki bezpieczna dla wszystkich wersji pdf-lib
+    // Wektorowa definicja gwiazdki
     const starSvg = "M 10 0 L 13 7 L 20 7 L 15 12 L 17 19 L 10 15 L 3 19 L 5 12 L 0 7 L 7 7 Z";
 
     for (let p = 0; p < totalPages; p++) {
@@ -622,8 +629,8 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
         const x = marginX + col * cardWidth;
         const y = pageHeight - marginY - (row + 1) * cardHeight;
 
-        // 1. Tło gradientowe
-        const gradientSteps = 30;
+        // 1. Tło - Gradient pionowy
+        const gradientSteps = 24;
         for (let s = 0; s < gradientSteps; s++) {
           const ratio = s / gradientSteps;
           page.drawRectangle({
@@ -639,7 +646,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
           });
         }
 
-        // Linie cięcia + złoty pasek u góry
+        // Linie cięcia + złoty pasek akcentowy na górze
         page.drawRectangle({
           x,
           y,
@@ -651,37 +658,38 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
 
         page.drawRectangle({
           x,
-          y: y + cardHeight - 1.5,
+          y: y + cardHeight - 1.2,
           width: cardWidth,
-          height: 1.5,
+          height: 1.2,
           color: rgb(0.96, 0.62, 0.04),
         });
 
-        // 2. Generowanie kodu QR
+        // 2. Kod QR (Rozmiar 28x28 mm — łatwy odczyt telefonem)
         const targetUrl = `https://dajopinie.com.pl/r/${table.code_identifier}`;
         const qrBuffer = await QRCode.toBuffer(targetUrl, {
-          width: 260,
+          width: 240,
           margin: 1,
           color: { dark: "#000000", light: "#FFFFFF" },
         });
         const qrImage = await pdfDoc.embedPng(qrBuffer);
 
-        const qrSize = 34 * MM_TO_PT;
-        const qrX = x + cardWidth - qrSize - 6 * MM_TO_PT;
+        const qrSize = 28 * MM_TO_PT;
+        const qrX = x + cardWidth - qrSize - 3.5 * MM_TO_PT;
         const qrY = y + (cardHeight - qrSize) / 2;
 
+        // Białe tło pod QR
         page.drawRectangle({
-          x: qrX - 2,
-          y: qrY - 2,
-          width: qrSize + 4,
-          height: qrSize + 4,
+          x: qrX - 1.5,
+          y: qrY - 1.5,
+          width: qrSize + 3,
+          height: qrSize + 3,
           color: rgb(1, 1, 1),
         });
         page.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize });
 
-        // 3. Lewa strona (Logo, Gwiazdki, Tekst)
-        const textX = x + 6 * MM_TO_PT;
-        let currentY = y + cardHeight - 5 * MM_TO_PT;
+        // 3. Lewa strona (Logo / Gwiazdki / Tekst)
+        const textX = x + 3.5 * MM_TO_PT;
+        let currentY = y + cardHeight - 3.5 * MM_TO_PT;
 
         if (logoImage) {
           currentY -= logoDims.height;
@@ -692,50 +700,49 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
             height: logoDims.height,
           });
         } else {
-          currentY -= 6 * MM_TO_PT;
+          currentY -= 4.5 * MM_TO_PT;
           const cleanName = (restaurant.name || "Restauracja")
             .replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, "a");
-          const restName = cleanName.length > 18 ? cleanName.substring(0, 16) + "..." : cleanName;
-          page.drawText(restName, { x: textX, y: currentY, size: 11, font: fontBold, color: rgb(1, 1, 1) });
+          const restName = cleanName.length > 13 ? cleanName.substring(0, 11) + "..." : cleanName;
+          page.drawText(restName, { x: textX, y: currentY, size: 8.5, font: fontBold, color: rgb(1, 1, 1) });
         }
 
         // 5 Złotych Gwiazdek
-        currentY -= 8 * MM_TO_PT;
-        const starSvg = "M 10 0 L 13 7 L 20 7 L 15 12 L 17 19 L 10 15 L 3 19 L 5 12 L 0 7 L 7 7 Z";
+        currentY -= 5.5 * MM_TO_PT;
         for (let star = 0; star < 5; star++) {
           page.drawSvgPath(starSvg, {
-            x: textX + star * 19, // Zwiększony odstęp między gwiazdkami
-            y: currentY + 12,
-            scale: 0.75,         // Lekko zmniejszona skala, aby gwiazdki nie zlewały się ze sobą
+            x: textX + star * 10,
+            y: currentY + 8,
+            scale: 0.5,
             color: rgb(0.96, 0.62, 0.04),
           });
         }
 
-        // Teksty
-        currentY -= 7 * MM_TO_PT;
-        page.drawText("Jak smakowalo?", {
+        // Hasło
+        currentY -= 5 * MM_TO_PT;
+        page.drawText("Ocen nas", {
           x: textX,
           y: currentY,
-          size: 9.5,
+          size: 7.5,
           font: fontBold,
           color: rgb(1, 1, 1),
         });
 
-        currentY -= 4.5 * MM_TO_PT;
-        page.drawText("Zeskanuj i ocen w Google", {
+        currentY -= 3.5 * MM_TO_PT;
+        page.drawText("w Google", {
           x: textX,
           y: currentY,
-          size: 7.5,
+          size: 6.5,
           font: fontRegular,
-          color: rgb(0.7, 0.75, 0.85),
+          color: rgb(0.75, 0.8, 0.9),
         });
 
-        // 4. Bezpieczna etykieta stolika (z fallbackiem, bez ryzyka undefined.toUpperCase)
+        // 4. Etykieta stolika (dla obsługi w lewym dolnym rogu)
         const safeLabel = String(table.label || `Stolik #${i + 1}`).toUpperCase();
         page.drawText(safeLabel, {
           x: textX,
-          y: y + 4 * MM_TO_PT,
-          size: 5.5,
+          y: y + 2.5 * MM_TO_PT,
+          size: 4.8,
           font: fontBold,
           color: rgb(0.45, 0.5, 0.6),
         });
@@ -744,7 +751,7 @@ app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
 
     const pdfBytes = await pdfDoc.save();
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=DajOpinie-${restaurant.slug}-winietki.pdf`);
+    res.setHeader("Content-Disposition", `attachment; filename=DajOpinie-${restaurant.slug}-55x40.pdf`);
     return res.send(Buffer.from(pdfBytes));
   } catch (err: any) {
     console.error("PDF generation error:", err);

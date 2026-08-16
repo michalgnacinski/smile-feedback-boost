@@ -151,7 +151,7 @@ export function QrTables({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `DajOpinie-${slug}-winietki-90x50.pdf`;
+      a.download = `DajOpinie-${slug}-winietki-55x40.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();

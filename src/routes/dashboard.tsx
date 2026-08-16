@@ -400,12 +400,12 @@ export function Dashboard() {
           {/* NAGŁÓWEK DANEGO WIDOKU */}
           <div className="mb-8 sm:mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-6">
             <div className="flex items-center gap-4">
-              <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl border border-border bg-slate-900/90 p-2 shadow-md shrink-0 ring-1 ring-white/10">
+              <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl border border-border bg-slate-900/90 shadow-md shrink-0 ring-1 ring-white/10">
                 {dashboardData?.logoUrl ? (
                   <img
                     src={dashboardData.logoUrl}
                     alt={`Logo — ${dashboardData.restaurantName}`}
-                    className="h-full w-full object-contain rounded-xl"
+                    className="size-full aspect-square object-cover object-center rounded-2xl"
                   />
                 ) : (
                   <Store className="size-7 text-primary" />

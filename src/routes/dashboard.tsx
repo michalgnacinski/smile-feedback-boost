@@ -467,11 +467,24 @@ export function Dashboard() {
                     </div>
                   )}
 
-                  <Overview stats={dashboardData?.stats} chartData={dashboardData?.chartData} />
+                  <Overview 
+                    stats={dashboardData?.stats} 
+                    chartData={dashboardData?.chartData}
+                    restaurantName={dashboardData?.restaurantName}
+                    googleRating={dashboardData?.rating || dashboardData?.googleRating}
+                    totalReviews={dashboardData?.userRatingsTotal || dashboardData?.totalReviews}
+                    googleReviews={dashboardData?.reviews || dashboardData?.googleReviews}
+                    data={dashboardData}
+                  />
 
+                  {/* Widget opinii Google na dole dashboardu */}
                   <GoogleReviewsWidget
                     slug={dashboardData?.slug || ""}
+                    restaurantName={dashboardData?.restaurantName || ""}
                     googleReviewLink={dashboardData?.googleReviewLink}
+                    reviews={dashboardData?.reviews || dashboardData?.googleReviews || []}
+                    rating={dashboardData?.rating || dashboardData?.googleRating}
+                    userRatingsTotal={dashboardData?.userRatingsTotal || dashboardData?.totalReviews}
                   />
                 </div>
               )}

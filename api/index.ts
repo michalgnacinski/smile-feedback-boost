@@ -495,6 +495,112 @@ app.delete("/api/qr-codes/:id", async (req, res) => {
   }
 });
 
+app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const restaurant = await db.restaurants.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        google_place_id: true,
+        google_review_link: true,
+      },
+    });
+
+    if (!restaurant) {
+      return res.json({
+        hasPlaceId: false,
+        rating: 0,
+        totalReviews: 0,
+        reviews: [],
+      });
+    }
+
+    function extractPlaceId(link: string | null): string | null {
+      if (!link) return null;
+      try {
+        const url = new URL(link);
+        const fromParam = url.searchParams.get("placeid");
+        if (fromParam) return fromParam;
+
+        const match = link.match(/(ChIJ[a-zA-Z0-9_-]+)/);
+        return match ? match[1] : null;
+      } catch {
+        const match = link.match(/(ChIJ[a-zA-Z0-9_-]+)/);
+        return match ? match[1] : null;
+      }
+    }
+
+    const placeId = restaurant.google_place_id || extractPlaceId(restaurant.google_review_link);
+
+    // Jeśli brak skonfigurowanego profilu lub klucza API
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!placeId || !apiKey) {
+      return res.json({
+        hasPlaceId: false,
+        restaurantName: restaurant.name,
+        rating: 5.0,
+        totalReviews: 0,
+        reviews: [],
+      });
+    }
+
+    // Zapytanie do Google Places API (v1)
+    const googleUrl = `https://places.googleapis.com/v1/places/${placeId}?languageCode=pl`;
+
+    const response = await fetch(googleUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "rating,userRatingCount,displayName,reviews",
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.warn("Ostrzeżenie Google Places API:", data);
+      return res.json({
+        hasPlaceId: true,
+        restaurantName: restaurant.name,
+        rating: 5.0,
+        totalReviews: 0,
+        reviews: [],
+      });
+    }
+
+    const rawReviews = Array.isArray(data.reviews) ? data.reviews : [];
+
+    const reviews = rawReviews
+      .map((rev: any) => ({
+        authorName: rev.authorAttribution?.displayName || "Gość lokalu",
+        rating: rev.rating || 5,
+        text: rev.text?.text || rev.originalText?.text || "",
+        relativeTime: rev.relativePublishTimeDescription || "Niedawno",
+        publishTime: rev.publishTime ? new Date(rev.publishTime).getTime() : 0,
+      }))
+      .sort((a: any, b: any) => b.publishTime - a.publishTime);
+
+    return res.json({
+      hasPlaceId: true,
+      restaurantName: data.displayName?.text || restaurant.name,
+      rating: typeof data.rating === "number" ? data.rating : 5.0,
+      totalReviews: typeof data.userRatingCount === "number" ? data.userRatingCount : 0,
+      reviews,
+    });
+  } catch (error: any) {
+    console.error("Szczegóły błędu serwera google-reviews:", error);
+    return res.json({
+      hasPlaceId: false,
+      rating: 0,
+      totalReviews: 0,
+      reviews: [],
+    });
+  }
+});
+
 // 10. HURTOWE GENEROWANIE STOLIKÓW
 app.post("/api/restaurant/:slug/bulk-tables", async (req, res) => {
   try {

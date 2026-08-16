@@ -8,6 +8,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { Resend } from "resend";
 import Stripe from "stripe";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import QRCode from "qrcode";
 
 // 1. BAZA DANYCH (POŁĄCZENIE Z NEONDB)
 const connectionString = process.env.DATABASE_URL;
@@ -725,6 +727,219 @@ app.get("/api/restaurant/:slug/google-reviews", async (req, res) => {
       error: "Wewnętrzny błąd serwera", 
       details: error.message || String(error) 
     });
+  }
+});
+
+app.post("/api/restaurant/:slug/bulk-tables", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { count } = req.body; // np. 15
+
+    const numCount = parseInt(count, 10);
+    if (isNaN(numCount) || numCount <= 0 || numCount > 100) {
+      return res.status(400).json({ error: "Podaj liczbę stolików od 1 do 100." });
+    }
+
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { slug },
+      include: { tables: true },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ error: "Nie znaleziono restauracji." });
+    }
+
+    // Usuwamy stare stoliki lub dodajemy nowe od 1 do count
+    // Wariant z usunięciem starych i wygenerowaniem od nowa:
+    await prisma.table.deleteMany({ where: { restaurantId: restaurant.id } });
+
+    const newTablesData = Array.from({ length: numCount }, (_, i) => ({
+      tableNumber: i + 1,
+      name: `Stolik ${i + 1}`,
+      restaurantId: restaurant.id,
+    }));
+
+    await prisma.table.createMany({ data: newTablesData });
+
+    const updatedTables = await prisma.table.findMany({
+      where: { restaurantId: restaurant.id },
+      orderBy: { tableNumber: "asc" },
+    });
+
+    res.json({ success: true, tables: updatedTables });
+  } catch (err: any) {
+    console.error("Bulk tables error:", err);
+    res.status(500).json({ error: "Błąd tworzenia stolików." });
+  }
+});
+
+// 2. GENEROWANIE ARKUSZA PDF A4 DO DRUKU (Format 90x50 mm)
+app.get("/api/restaurant/:slug/print-pdf", async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { slug },
+      include: {
+        tables: {
+          orderBy: { tableNumber: "asc" },
+        },
+      },
+    });
+
+    if (!restaurant || !restaurant.tables.length) {
+      return res.status(400).json({ error: "Brak stolików do wydruku." });
+    }
+
+    // A4 w punktach: 595.28 x 841.89 pt
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    // Przeliczniki: 1 mm = 2.83465 pt
+    const MM_TO_PT = 2.83465;
+    const cardWidth = 90 * MM_TO_PT; // ~255 pt
+    const cardHeight = 50 * MM_TO_PT; // ~141.7 pt
+
+    const cols = 2;
+    const rows = 5;
+    const cardsPerPage = cols * rows; // 10 kart na stronę
+
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+
+    const marginX = (pageWidth - cols * cardWidth) / 2; // Wyśrodkowanie w poziomie
+    const marginY = (pageHeight - rows * cardHeight) / 2; // Wyśrodkowanie w pionie
+
+    const tables = restaurant.tables;
+    const totalPages = Math.ceil(tables.length / cardsPerPage);
+
+    // Opcjonalne logo lokalu (jeśli jest w base64)
+    let logoImage = null;
+    if (restaurant.logoUrl && restaurant.logoUrl.startsWith("data:image/png;base64,")) {
+      try {
+        const base64Data = restaurant.logoUrl.replace("data:image/png;base64,", "");
+        const imageBytes = Buffer.from(base64Data, "base64");
+        logoImage = await pdfDoc.embedPng(imageBytes);
+      } catch (e) {
+        console.warn("Nie udało się osadzić logo:", e);
+      }
+    }
+
+    for (let p = 0; p < totalPages; p++) {
+      const page = pdfDoc.addPage([pageWidth, pageHeight]);
+      const pageTables = tables.slice(p * cardsPerPage, (p + 1) * cardsPerPage);
+
+      for (let i = 0; i < pageTables.length; i++) {
+        const table = pageTables[i];
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+
+        // Pozycja lewego dolnego rogu winietki (współrzędne PDF liczą od dołu)
+        const x = marginX + col * cardWidth;
+        const y = pageHeight - marginY - (row + 1) * cardHeight;
+
+        // 1. Tło winietki (ciemny elegancki motyw #0B0F17)
+        page.drawRectangle({
+          x,
+          y,
+          width: cardWidth,
+          height: cardHeight,
+          color: rgb(0.043, 0.058, 0.09), // #0b0f17
+          borderColor: rgb(0.2, 0.25, 0.35),
+          borderWidth: 0.5, // Dyskretna linia cięcia
+        });
+
+        // 2. Generowanie kodu QR jako PNG
+        const targetUrl = `https://dajopinie.com.pl/r/${restaurant.slug}?t=${table.tableNumber}`;
+        const qrBuffer = await QRCode.toBuffer(targetUrl, {
+          width: 250,
+          margin: 1,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        });
+        const qrImage = await pdfDoc.embedPng(qrBuffer);
+
+        // Pozycja kodu QR po prawej stronie winietki
+        const qrSize = 34 * MM_TO_PT; // 34x34 mm
+        const qrX = x + cardWidth - qrSize - 5 * MM_TO_PT;
+        const qrY = y + (cardHeight - qrSize) / 2;
+
+        // Biała obwódka pod kod QR
+        page.drawRectangle({
+          x: qrX - 2,
+          y: qrY - 2,
+          width: qrSize + 4,
+          height: qrSize + 4,
+          color: rgb(1, 1, 1),
+        });
+
+        page.drawImage(qrImage, {
+          x: qrX,
+          y: qrY,
+          width: qrSize,
+          height: qrSize,
+        });
+
+        // 3. Teksty po lewej stronie
+        const textX = x + 6 * MM_TO_PT;
+
+        // Numer stolika (złoty akcent)
+        page.drawText(`STOLIK ${table.tableNumber}`, {
+          x: textX,
+          y: y + cardHeight - 10 * MM_TO_PT,
+          size: 8,
+          font: font,
+          color: rgb(0.96, 0.62, 0.04), // #f59e0b
+        });
+
+        // Nazwa restauracji
+        const restName = restaurant.name.length > 18 ? restaurant.name.substring(0, 16) + "..." : restaurant.name;
+        page.drawText(restName, {
+          x: textX,
+          y: y + cardHeight - 17 * MM_TO_PT,
+          size: 11,
+          font: font,
+          color: rgb(1, 1, 1),
+        });
+
+        // Call to action
+        page.drawText("Jak smakowalo?", {
+          x: textX,
+          y: y + cardHeight - 24 * MM_TO_PT,
+          size: 8,
+          font: fontRegular,
+          color: rgb(0.75, 0.8, 0.9),
+        });
+        page.drawText("Zeskanuj i ocen w Google", {
+          x: textX,
+          y: y + cardHeight - 30 * MM_TO_PT,
+          size: 7.5,
+          font: fontRegular,
+          color: rgb(0.75, 0.8, 0.9),
+        });
+
+        // Subtelny podpis na dole
+        page.drawText("Powered by DajOpinie *", {
+          x: textX,
+          y: y + 4 * MM_TO_PT,
+          size: 5.5,
+          font: fontRegular,
+          color: rgb(0.45, 0.5, 0.6),
+        });
+      }
+    }
+
+    const pdfBytes = await pdfDoc.save();
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=DajOpinie-${restaurant.slug}-stoliki.pdf`);
+    res.send(Buffer.from(pdfBytes));
+  } catch (err: any) {
+    console.error("PDF generation error:", err);
+    res.status(500).json({ error: "Błąd generowania pliku PDF." });
   }
 });
 
